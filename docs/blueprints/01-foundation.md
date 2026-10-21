@@ -138,7 +138,7 @@ flux-db/
 │   │   ├── lib.rs
 │   │   ├── value.rs            # Value enum, IntoValue / FromValue
 │   │   ├── row.rs              # Row (column names + values), get::<T>(name)
-│   │   ├── error.rs            # Error, ErrorKind
+│   │   ├── error.rs            # Error (InvalidQuery, Decode, NotFound, Driver)
 │   │   ├── column.rs           # Column, TypedColumn<E, T>, col()
 │   │   ├── expr.rs             # Expr tree, ops, LIKE pattern type
 │   │   ├── order.rs            # OrderBy, Direction, NullsOrder
@@ -167,8 +167,7 @@ flux-db/
 │   │   ├── pool.rs             # PgPool: Driver + Executor
 │   │   ├── connection.rs
 │   │   ├── transaction.rs
-│   │   ├── types.rs            # Value <-> ToSql/FromSql
-│   │   └── error.rs            # SQLSTATE -> ErrorKind
+│   │   └── types.rs            # Value <-> ToSql/FromSql
 │   ├── entity/                 # package flux-db-entity, proc-macro (#[derive(Entity)])
 │   │   └── src/
 │   │   ├── lib.rs              # #[derive(Entity)]
@@ -185,13 +184,13 @@ flux-db/
 Facade features: `default = ["entity"]`, `postgres` (off by default), `entity`, `active-record` (implies `entity`), `tls`, `chrono` (default), `uuid`, `json`, `decimal`.
 
 ## Core types & traits overview
-- **Value**: `Null, Bool, I16, I32, I64, F32, F64, Decimal (feature `decimal`), String, Bytes, Uuid (feature), Date, Time, DateTime (naive), DateTimeTz (UTC), Json (feature)`; dates via chrono. Safe enum, no `unsafe`. `u64` > `i64::MAX` → `ErrorKind::Overflow` (`TryFrom`, never `as`). `Option<T>` maps `None` → `Null`.
-- **FromValue**: fallible; type mismatch → `ErrorKind::Decode { column, expected, found }`. Unknown DB types → `Decode`, never silently NULL.
-- **Row**: ordered columns; `get::<T>("name")` → `Result<T>`; missing column → `ErrorKind::ColumnNotFound`.
+- **Value**: `Null, Bool, I16, I32, I64, F32, F64, Decimal (feature `decimal`), String, Bytes, Uuid (feature), Date, Time, DateTime (naive), DateTimeTz (UTC), Json (feature)`; dates via chrono. Safe enum, no `unsafe`. `u64` > `i64::MAX` → `Error::Decode` (`TryFrom`, never `as`). `Option<T>` maps `None` → `Null`.
+- **FromValue**: fallible; type mismatch, NULL into non-`Option` → `Error::Decode { column, message }`. Unknown DB types → `Decode`, never silently NULL.
+- **Row**: ordered columns; `get::<T>("name")` → `Result<T>`; missing column → `Error::Decode`.
 - **Column**: `{ table: Option<Ident>, name: Ident }`. `TypedColumn<E, T>` wraps it with `PhantomData`; ops require `IntoValue` matching `T` (`Option<T>` columns get `is_null`).
 - **Expr**: `Column | Value | Binary(op) | Not | And(Vec) | Or(Vec) | IsNull | In(Vec<Value>) | Like { pattern, escaped } | Raw { sql, params }` (bound params only). `contains/starts_with/ends_with` escape `%`, `_`, `\`; `like()` takes a raw pattern explicitly.
-- **Queries**: owned structs; builders consume `self`. `Insert` requires ≥1 row & ≥1 column at render time → `ErrorKind::EmptyInsert`. Multi-row insert requires identical column sets.
-- **Error**: `struct Error { kind: ErrorKind, source: Option<Box<dyn Error + Send + Sync>> }`, `ErrorKind: NotFound, UniqueViolation, ForeignKeyViolation, NotNullViolation, CheckViolation, Timeout, PoolExhausted, Connection, Decode, ColumnNotFound, Overflow, EmptyInsert, UnfilteredWrite, InvalidQuery, Cancelled, Database(code)`. `#[non_exhaustive]`.
+- **Queries**: owned structs; builders consume `self`. `Insert` requires ≥1 row & ≥1 column at render time → `Error::InvalidQuery`. Multi-row insert requires identical column sets (else `InvalidQuery`).
+- **Error**: `#[non_exhaustive] pub enum Error { InvalidQuery(String), Decode { column: String, message: String }, NotFound, Driver(Box<dyn std::error::Error + Send + Sync>) }` in `crates/core/src/error.rs`. `InvalidQuery`: empty insert, unfiltered write, bad identifier, mismatched multi-row insert, UPDATE with no SET, >65535 params, `.all()` fallback. `Decode`: missing column, type mismatch, overflow (`u64` > `i64::MAX`), NULL into non-`Option`, unknown DB type. `NotFound`: `fetch_one`/`find` with no rows. `Driver`: the original driver error (e.g. `tokio_postgres::Error`, pool errors) passed through untouched; users downcast for SQLSTATE/timeout/pool info.
 - **Executor** is implemented by pool, connection and transaction, so AR methods take `&impl Executor`.
 
 ## Data flow
@@ -216,7 +215,7 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 
 **feature/core**
 1. Workspace `Cargo.toml`, toolchain, lint config, empty crates.
-2. `error.rs` with `ErrorKind`.
+2. `error.rs` with `Error`.
 3. `value.rs` + `IntoValue`/`FromValue` for std types; overflow checks.
 4. `row.rs`.
 5. `column.rs`, `expr.rs`, `order.rs`.
@@ -235,21 +234,20 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 14. `types.rs` Value↔Postgres mapping (chrono; uuid/json/decimal features); reject unsupported types.
 15. `Executor` impls: execute, fetch (stream via `query_raw`), fetch_all/one/optional.
 16. Transactions; rollback on drop.
-17. SQLSTATE → `ErrorKind` mapping.
-18. docker-compose + shared suite wired to Postgres.
+17. docker-compose + shared suite wired to Postgres.
 
 **feature/entity**
-19. Attribute parsing (`table`, `column`, `primary_key`, `generated`, `skip`) with spanned errors.
-20. Generate `TypedColumn` consts, `FromRow`, `Entity`.
-21. Generate `find`, `query`, `save`, `insert`, `update`, `delete` (behind `active-record`).
-22. trybuild compile-fail tests.
+18. Attribute parsing (`table`, `column`, `primary_key`, `generated`, `skip`) with spanned errors.
+19. Generate `TypedColumn` consts, `FromRow`, `Entity`.
+20. Generate `find`, `query`, `save`, `insert`, `update`, `delete` (behind `active-record`).
+21. trybuild compile-fail tests.
 
-23. Facade features + prelude, README example.
-24. Criterion benches, including a `size_of::<Value>()` report and param-binding cost (Value→ToSql for 1/100/10k params).
+22. Facade features + prelude, README example.
+23. Criterion benches, including a `size_of::<Value>()` report and param-binding cost (Value→ToSql for 1/100/10k params).
 
 ## Testing strategy
 - **Unit** (per crate): values, builders, validation, renderer snapshots per dialect.
-- **Shared backend suite**: a `BackendSuite` trait / macro in `crates/flux-db/tests/suite` that takes a driver factory and runs the same CRUD, types, streaming, transaction, error-mapping cases; each driver instantiates it (Postgres now, MySQL/SQLite later).
+- **Shared backend suite**: a `BackendSuite` trait / macro in `crates/flux-db/tests/suite` that takes a driver factory and runs the same CRUD, types, streaming, transaction, driver error passthrough cases; each driver instantiates it (Postgres now, MySQL/SQLite later).
 - **Integration**: `docker-compose.yml` Postgres (pinned version, e.g. 16); env `FLUX_PG_URL`; each test uses its own schema/temp table for isolation; `#[ignore]` or feature gate when no DB.
 - **Compile tests**: trybuild for macro errors and typed-column type mismatches.
 - **Property tests** (proptest): identifier quoting and LIKE escaping round-trip.
@@ -291,20 +289,20 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 - Missing column, extra columns, duplicate column names, renamed column via `#[flux(column)]`, unsupported Postgres type (e.g. `point`) → `Decode`.
 
 **Writes**
-- Empty insert (no rows / no columns) → `EmptyInsert`.
+- Empty insert (no rows / no columns) → `InvalidQuery`.
 - Multi-row insert with mismatched columns → error.
-- UPDATE/DELETE without filter and without `.all()` → `UnfilteredWrite`; `.all()` plus filter must not compile (trybuild).
+- UPDATE/DELETE without filter and without `.all()` → `InvalidQuery`; `.all()` plus filter must not compile (trybuild).
 - UPDATE with no SET → error.
 - `save()` on entity with existing id that no longer exists → `NotFound` (0 rows affected).
 - `save()` insert with `generated` id: id filled from RETURNING; non-generated PK supplied by user.
-- `insert()` on existing PK → `UniqueViolation`; `update()` with unset PK → `InvalidQuery`, missing row → `NotFound`.
+- `insert()` on existing PK → `Driver` (SQLSTATE 23505); `update()` with unset PK → `InvalidQuery`, missing row → `NotFound`.
 - `delete()` on missing row → `NotFound`; `find` missing → `Ok(None)`.
-- Unique violation → `UniqueViolation` with constraint name.
+- Unique violation → `Driver` (downcast: SQLSTATE 23505, constraint name preserved).
 
 **Pool / connection**
-- Pool exhaustion → `PoolExhausted`/`Timeout` after wait timeout, no deadlock.
+- Pool exhaustion → `Driver` (pool timeout error) after wait timeout, no deadlock.
 - DB restart mid-run: broken connections recycled.
-- Statement timeout → `Timeout`.
+- Statement timeout → `Driver` (SQLSTATE 57014).
 - TLS: bad cert / hostname mismatch → `Connection`; `tls` off + server requiring TLS → `Connection`.
 - Wrong credentials / unreachable host → `Connection`.
 
@@ -331,3 +329,4 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 7. TLS via rustls behind the `tls` feature.
 8. Sub-branches merge straight into `dev`, one at a time: core-ast → sql-renderer → postgres-driver → entity-derive.
 9. Latest stable Rust: edition 2024, workspace rust-version = "1.99" (replaces MSRV 1.75).
+10. Minimal errors: 4 variants, driver errors passed through as source.

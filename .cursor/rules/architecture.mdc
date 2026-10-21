@@ -7,7 +7,7 @@ alwaysApply: true
 Source of truth: `docs/blueprints/` (see `01-foundation.md`). Changes to architecture go through Stormie Flux first.
 
 ## Workspace layout
-- `crates/core` (`flux-db-core`): safe `Value` enum, owned query AST (Select/Insert/Update/Delete, Expr, Column), builders, `Driver`/`Executor`/`Connection`/`Transaction`, `FromRow`/`Entity` traits, `Error` with kinds. No driver, no runtime, no tokio types.
+- `crates/core` (`flux-db-core`): safe `Value` enum, owned query AST (Select/Insert/Update/Delete, Expr, Column), builders, `Driver`/`Executor`/`Connection`/`Transaction`, `FromRow`/`Entity` traits, `Error`. No driver, no runtime, no tokio types.
 - `crates/sql-render` (`flux-db-sql-render`): one shared SQL renderer -> SQL string + bound params; `Dialect` trait for placeholders, identifier quoting, limit/offset, RETURNING. Depends only on `flux-db-core`.
 - `crates/postgres` (`flux-db-postgres`): native `tokio-postgres` + pool; Postgres dialect + connection. Optional rustls TLS.
 - `crates/entity` (`flux-db-entity`): `#[derive(Entity)]` proc-macro (typed columns, find/query/save/insert/update/delete).
@@ -26,4 +26,5 @@ Source of truth: `docs/blueprints/` (see `01-foundation.md`). Changes to archite
 - No silent lossy conversions (e.g. `u64` overflow is an error, unknown types are errors, not NULL).
 - SQL generation lives only in `flux-db-sql-render`; drivers never `format!` SQL.
 - Single-column primary keys; `chrono` for time; no savepoints in v1.
+- Errors: minimal flux_db_core::Error (InvalidQuery, Decode, NotFound, Driver); never wrap or remap driver errors, pass them through in Driver.
 - Prefer the minimal design; new crates or traits need a blueprint.

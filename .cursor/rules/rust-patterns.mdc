@@ -19,7 +19,7 @@ Formatting, naming, docs and lints: see `style.mdc` (Cleanie Flux). Crate layout
 - Keep traits small; prefer extension traits over growing a core trait.
 
 ## Errors
-- One `Error` type in `flux-db-core` with an `ErrorKind`; use `thiserror` style manual impls, no `anyhow` in library crates.
+- One `#[non_exhaustive]` `Error` enum in `flux-db-core` (`InvalidQuery`, `Decode`, `NotFound`, `Driver(Box<dyn Error + Send + Sync>)`); no `ErrorKind`, driver errors pass through in `Driver` and are inspected by downcasting. Manual `Display`/`Error` impls, no `anyhow` in library crates.
 - No `unwrap`/`expect`/`panic!` in library code except for proven invariants with a comment explaining why.
 - Use checked conversions (`TryFrom`) for numeric widths; overflow is an error.
 

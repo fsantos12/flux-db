@@ -21,7 +21,8 @@ alwaysApply: false
 
 ## What every change must test
 - Every item in the blueprint's "Edge cases for Hunter Flux" section that touches the change.
-- Error paths, not only happy paths: assert the exact error variant (`InvalidQuery`, `UnfilteredWrite`, `EmptyInsert`, `NotFound`, `UniqueViolation`, `Decode`, `Timeout`, `PoolExhausted`, `Connection`).
+- Error paths, not only happy paths: assert the exact `flux_db_core::Error` variant (`InvalidQuery`, `Decode { column, .. }`, `NotFound`, `Driver`). The enum is `#[non_exhaustive]`, so match with a `_` arm. For driver failures (unique violation, pool exhaustion, timeout, connection, TLS), assert `Driver` and then downcast the boxed source to the driver's own error type (e.g. `tokio_postgres::Error`) to check the cause; never compare error strings.
+- Validation failures that used to have their own kinds (unfiltered write, empty insert, mismatched insert columns, UPDATE with no SET) are `InvalidQuery`; assert the variant and that the message names the problem.
 - Security: identifiers are always quoted and validated; values are always bound parameters (including LIMIT/OFFSET); no user input is ever inlined into SQL.
 - No panics: library code returns errors; tests use `unwrap`/`expect` freely, library code does not.
 

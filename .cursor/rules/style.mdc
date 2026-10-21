@@ -38,9 +38,9 @@ Baseline: no rustfmt.toml, clippy.toml, [lints] or CI exist yet. These rules fol
 
 ## Error Handling
 - Library code never panics on recoverable conditions: no `unwrap`/`expect` outside tests, examples and proven invariants (document the invariant in the `expect` message).
-- Return `Result<T, E>` with typed errors (one error enum per domain, implementing `std::error::Error` and `Display`); use `?` for propagation.
+- Return `Result<T, flux_db_core::Error>` (the single `#[non_exhaustive]` enum defined in `architecture.mdc`); do not add new error types or variants without an architecture change. Use `?` for propagation.
 - Error messages are lowercase, without trailing punctuation, and describe what failed.
-- Do not erase error context; wrap source errors via `#[source]`/`From`.
+- Do not erase error context: pass driver errors through untouched in `Error::Driver` instead of stringifying them.
 
 ## Documentation
 - Every public item has a `///` rustdoc comment: a one-line summary, then details if needed.
