@@ -1,0 +1,29 @@
+---
+description: flux-db architecture rules (owner: Stormie Flux)
+alwaysApply: true
+---
+# flux-db architecture
+
+Source of truth: `docs/blueprints/` (see `01-foundation.md`). Changes to architecture go through Stormie Flux first.
+
+## Workspace layout
+- `crates/core` (`flux-db-core`): safe `Value` enum, owned query AST (Select/Insert/Update/Delete, Expr, Column), builders, `Driver`/`Executor`/`Connection`/`Transaction`, `FromRow`/`Entity` traits, `Error` with kinds. No driver, no runtime, no tokio types.
+- `crates/sql-render` (`flux-db-sql-render`): one shared SQL renderer -> SQL string + bound params; `Dialect` trait for placeholders, identifier quoting, limit/offset, RETURNING. Depends only on `flux-db-core`.
+- `crates/postgres` (`flux-db-postgres`): native `tokio-postgres` + pool; Postgres dialect + connection. Optional rustls TLS.
+- `crates/entity` (`flux-db-entity`): `#[derive(Entity)]` proc-macro (typed columns, find/query/save/insert/update/delete).
+- `crates/flux-db` (`flux-db`): facade; re-exports behind features (`entity`, `postgres`; optional `uuid`, `json`, `decimal`).
+- Packages keep the `flux-` prefix. Future: `crates/mysql`, `crates/sqlite`, `flux-orm`.
+
+## Dependency direction
+`flux-db` -> drivers -> `flux-db-sql-render` -> `flux-db-core`. `flux-db-entity` generates code against `flux-db-core` only. Never depend upward or sideways between drivers.
+
+## Rules
+- Drivers chosen at compile time via generics. No `AnyDriver`, no `dyn Driver`.
+- Native `async fn` in traits (edition 2024, rust-version 1.99). No `async-trait`.
+- Typed columns are the primary API; string `col("x")` is the escape hatch. Both build the same AST.
+- All values are bound parameters. Identifiers are always quoted by the dialect. LIKE patterns always escaped. Raw SQL only via `query_raw` with bound params.
+- Errors, never panics, on bad input (`FromRow` returns `Result`, empty insert is an error, unfiltered UPDATE/DELETE requires `.all()`).
+- No silent lossy conversions (e.g. `u64` overflow is an error, unknown types are errors, not NULL).
+- SQL generation lives only in `flux-db-sql-render`; drivers never `format!` SQL.
+- Single-column primary keys; `chrono` for time; no savepoints in v1.
+- Prefer the minimal design; new crates or traits need a blueprint.

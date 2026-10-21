@@ -1,0 +1,42 @@
+---
+description: Testing rules for flux-db (owned by Hunter Flux)
+globs: ["crates/**/*.rs", "crates/**/tests/**", "docker-compose*.yml"]
+alwaysApply: false
+---
+
+# Testing rules
+
+## Where tests live
+- Unit tests: in the same file, inside `#[cfg(test)] mod tests`, next to the code they test.
+- Integration tests: `crates/<crate>/tests/*.rs`, using only the public API.
+- Compile-fail tests (trybuild): `crates/<crate>/tests/ui/*.rs` with matching `.stderr` files, run from `tests/ui.rs`.
+- Shared backend suite (Postgres today, other drivers later): `crates/postgres/tests/`, written against the public `flux-db` API so it can be reused by every driver.
+- Package names: flux-db-core, flux-db-sql-render, flux-db-postgres, flux-db-entity, flux-db (facade, feature `entity`).
+
+## Tools (dev-dependencies only)
+- `insta` for snapshot tests of rendered SQL and its bound params. Review snapshot changes with `cargo insta review`; never accept them blindly.
+- `trybuild` for code that must not compile (typestate, macro errors with spans).
+- `proptest` for property tests (identifier quoting, LIKE escaping, Value round trips).
+- Postgres 16 from the repo's docker-compose; tests read `DATABASE_URL`. Tests that need a database are marked `#[ignore = "needs DATABASE_URL"]` or skip cleanly when it is unset, and each test uses its own schema or transaction so tests can run in parallel.
+
+## What every change must test
+- Every item in the blueprint's "Edge cases for Hunter Flux" section that touches the change.
+- Error paths, not only happy paths: assert the exact error variant (`InvalidQuery`, `UnfilteredWrite`, `EmptyInsert`, `NotFound`, `UniqueViolation`, `Decode`, `Timeout`, `PoolExhausted`, `Connection`).
+- Security: identifiers are always quoted and validated; values are always bound parameters (including LIMIT/OFFSET); no user input is ever inlined into SQL.
+- No panics: library code returns errors; tests use `unwrap`/`expect` freely, library code does not.
+
+## Naming
+- Test names describe behaviour: `empty_in_list_renders_always_false`, not `test1`.
+- One behaviour per test. Code and comments in English.
+
+## Gates
+- `feature/<name>` -> `dev`: `cargo test --workspace` (unit and compile-fail tests) passes, plus `cargo clippy --workspace --all-targets -- -D warnings`.
+- `dev` -> `test`: integration tests against Postgres and stress tests pass (stress: 1k concurrent tasks on a small pool, 1M-row stream without memory growth, query cancellation midway).
+- Stress tests are `#[ignore]` by default and run with `cargo test -- --ignored`.
+- Toolchain: latest stable Rust, edition 2024, workspace rust-version "1.99"; tests must build on that version.
+
+## Hotfixes
+- Every `hotfix/<name>` adds a regression test that fails before the fix and passes after it, named `regression_<short_issue>`.
+
+## Delivery
+- Hunter Flux does not push. He writes and runs tests on a local copy under /workspace/flux-db and shares the test files (paths and diffs) in the group, and Filipe or Dever Flux commits them to the feature branch (feature/* only).

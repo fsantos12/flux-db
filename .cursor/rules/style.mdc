@@ -1,0 +1,60 @@
+---
+description: Rust code style, naming, documentation and refactoring rules for flux-db (owned by Cleanie Flux)
+globs: **/*.rs
+alwaysApply: true
+---
+
+# flux-db Style Rules
+
+Baseline: no rustfmt.toml, clippy.toml, [lints] or CI exist yet. These rules follow default rustfmt, default clippy and the Rust API Guidelines. Update this file when config is added.
+
+## Project Layout and Toolchain
+- Workspace crates: `crates/core` (`flux-db-core`), `crates/sql-render` (`flux-db-sql-render`), `crates/postgres` (`flux-db-postgres`), `crates/entity` (`flux-db-entity`), `crates/flux-db` (facade `flux-db`). Architecture rules live in `architecture.mdc`.
+- Toolchain: latest stable Rust, edition 2024, workspace `rust-version = "1.99"` (set in the root `Cargo.toml`). Modern syntax and std APIs up to that version are welcome.
+- Put shared lint and format settings in the workspace root (`[workspace.lints]`, `rustfmt.toml`); member crates inherit with `[lints] workspace = true`.
+
+## Language
+- All code, identifiers, comments, docs, commit-facing text and error messages are in English.
+
+## Formatting
+- Code must pass `cargo fmt --check` with default rustfmt settings. Do not hand-format against rustfmt.
+- Code must pass `cargo clippy --all-targets -- -D warnings`. Prefer fixing over `#[allow]`; any `#[allow(...)]` needs a one-line comment explaining why, scoped as narrowly as possible.
+- Do not enable `clippy::pedantic` crate-wide unless it is added to config; pedantic suggestions may be applied case by case when they improve clarity.
+
+## Naming (Rust API Guidelines)
+- `UpperCamelCase` for types, traits, enum variants; `snake_case` for functions, methods, modules, variables; `SCREAMING_SNAKE_CASE` for consts and statics.
+- Acronyms are one word: `SqlBackend`, `NoSqlStore`, not `SQLBackend`.
+- Conversions: `as_*` (cheap borrow), `to_*` (expensive or owned), `into_*` (consumes self).
+- Getters have no `get_` prefix (`fn name(&self)`); iterator methods are `iter`, `iter_mut`, `into_iter`.
+- Builder methods take and return `self` and are named after the field they set.
+- Booleans read as predicates: `is_*`, `has_*`, `can_*`.
+
+## Module Layout
+- One concept per module; keep files focused (aim under ~400 lines).
+- Use `foo.rs` + `foo/` directory style, not `mod.rs`.
+- Keep items private by default; widen to `pub(crate)` before `pub`. Re-export the public API from `lib.rs` deliberately.
+- Order inside a file: `use` statements, constants, types, trait impls, inherent impls, free functions, `#[cfg(test)] mod tests`.
+- Group imports: `std`, external crates, then `crate`/`super`; no glob imports except in preludes and tests.
+
+## Error Handling
+- Library code never panics on recoverable conditions: no `unwrap`/`expect` outside tests, examples and proven invariants (document the invariant in the `expect` message).
+- Return `Result<T, E>` with typed errors (one error enum per domain, implementing `std::error::Error` and `Display`); use `?` for propagation.
+- Error messages are lowercase, without trailing punctuation, and describe what failed.
+- Do not erase error context; wrap source errors via `#[source]`/`From`.
+
+## Documentation
+- Every public item has a `///` rustdoc comment: a one-line summary, then details if needed.
+- Include an `# Examples` section with a compiling doctest for public functions, methods and types where usage is non-obvious.
+- Add `# Errors` when a function returns `Result`, listing when each error occurs.
+- Add `# Panics` when a function can panic, and `# Safety` on every `unsafe fn` (plus a `// SAFETY:` comment on every `unsafe` block).
+- Modules and the crate root have `//!` docs describing their purpose.
+- Comments explain *why*, not *what*. Remove commented-out code and stale TODOs (TODOs must reference an issue).
+
+## Clean Code
+- No redundant logic: remove dead code, duplicate branches, needless clones, needless `return`, and `match` that could be `if let`/combinators.
+- Prefer borrowing (`&str`, `&[T]`, `impl AsRef<..>`) in parameters over owned types when ownership is not needed.
+- Prefer iterators and combinators over manual index loops when clearer.
+- Keep functions short and single-purpose; extract helpers instead of nesting deeper than ~3 levels.
+- Avoid magic numbers; name them as constants.
+- Derive common traits (`Debug`, `Clone`, `PartialEq`, `Default` when meaningful) on public types.
+- Refactors must not change behaviour; run tests after every style pass.
