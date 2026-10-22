@@ -309,8 +309,8 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 - Pool exhaustion → `Driver` (pool timeout error) after wait timeout, no deadlock.
 - DB restart mid-run: broken connections recycled.
 - Statement timeout → `Driver` (SQLSTATE 57014).
-- TLS: bad cert / hostname mismatch → `Connection`; `tls` off + server requiring TLS → `Connection`.
-- Wrong credentials / unreachable host → `Connection`.
+- TLS: bad cert / hostname mismatch → `Driver`; `tls` off + server requiring TLS → `Driver`.
+- Wrong credentials / unreachable host → `Driver`.
 
 **Transactions**
 - Drop without commit → rollback (verify no data persisted); panic inside tx; commit after a failed statement (Postgres aborted tx) → error.
@@ -333,6 +333,6 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 5. `.all()` with a filter is prevented by typestate (fallback: `InvalidQuery` validation error if typestate proves impractical).
 6. No savepoints in v1.
 7. TLS via rustls behind the `tls` feature.
-8. Sub-branches merge straight into `dev`, one at a time: core-ast → sql-renderer → postgres-driver → entity-derive.
+8. Sub-branches merge straight into `dev`, one at a time: feature/core → feature/sql-render → feature/postgres-driver → feature/entity.
 9. Latest stable Rust: edition 2024, workspace rust-version = "1.99" (replaces MSRV 1.75).
 10. Minimal errors: 5 variants (InvalidQuery, Conversion, Decode, NotFound, Driver), driver errors passed through as source. `Conversion` added by Filipe (ffa87ce) for value-level type mismatches.
