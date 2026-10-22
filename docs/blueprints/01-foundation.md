@@ -140,8 +140,10 @@ flux-db/
 │   │   ├── row.rs              # Row (column names + values), get::<T>(name)
 │   │   ├── error.rs            # Error (InvalidQuery, Conversion, Decode, NotFound, Driver)
 │   │   ├── column.rs           # Column, TypedColumn<E, T>, col()
-│   │   ├── expr.rs             # Expr tree, ops, LIKE pattern type
-│   │   ├── order.rs            # OrderBy, Direction, NullsOrder
+│   │   ├── ast/
+│   │   │   ├── mod.rs
+│   │   │   ├── expr.rs         # Expr tree (filters + projections), LikePattern enum, Between
+│   │   │   └── order.rs        # OrderBy, Direction, NullsOrder
 │   │   ├── query/
 │   │   │   ├── mod.rs          # Query enum
 │   │   │   ├── select.rs
@@ -188,7 +190,7 @@ Facade features: `default = ["entity"]`, `postgres` (off by default), `entity`, 
 - **FromValue**: fallible, no column context; wrong `Value` variant → `Error::Conversion { expected, received }`. Lossless numeric widening is allowed (e.g. `I8` into `i64`, `F32` into `f64`); narrowing or lossy conversions are `Conversion` errors. Row decoding (`FromRow`/`Row::get`) adds the column: NULL into non-`Option`, missing column, unknown DB type → `Error::Decode { column, message }`, never silently NULL.
 - **Row**: ordered columns; `get::<T>("name")` → `Result<T>`; missing column → `Error::Decode`.
 - **Column**: `{ table: Option<Ident>, name: Ident }`. `TypedColumn<E, T>` wraps it with `PhantomData`; ops require `IntoValue` matching `T` (`Option<T>` columns get `is_null`).
-- **Expr**: `Column | Value | Binary(op) | Not | And(Vec) | Or(Vec) | IsNull | In(Vec<Value>) | Like { pattern, escaped } | Raw { sql, params }` (bound params only). `contains/starts_with/ends_with` escape `%`, `_`, `\`; `like()` takes a raw pattern explicitly.
+- **Expr**: `Column | Value | Binary(op) | Not | And(Vec) | Or(Vec) | IsNull | In(Vec<Value>) | Like { pattern, escaped } | Raw { sql, params }` (bound params only). `Between/NotBetween` included; `LikePattern` enum (Contains/StartsWith/EndsWith/Raw), escaping of `%`, `_`, `\` done by the dialect in sql-render; `like()` takes a raw pattern explicitly.
 - **Queries**: owned structs; builders consume `self`. `Insert` requires ≥1 row & ≥1 column at render time → `Error::InvalidQuery`. Multi-row insert requires identical column sets (else `InvalidQuery`).
 - **Error**: `#[non_exhaustive] pub enum Error { InvalidQuery(String), Conversion { expected: &'static str, received: &'static str }, Decode { column: String, message: String }, NotFound, Driver(Box<dyn std::error::Error + Send + Sync>) }` in `crates/core/src/error.rs`. `InvalidQuery`: empty insert, unfiltered write, bad identifier, mismatched multi-row insert, UPDATE with no SET, >65535 params, `.all()` fallback. `Conversion`: `FromValue` type mismatch or lossy/narrowing conversion (no column). `Decode`: column-scoped row decode failure: missing column, overflow (`u64` > `i64::MAX`), NULL into non-`Option`, unknown DB type. `NotFound`: `fetch_one`/`find` with no rows. `Driver`: the original driver error (e.g. `tokio_postgres::Error`, pool errors) passed through untouched; users downcast for SQLSTATE/timeout/pool info.
 - **Executor** is implemented by pool, connection and transaction, so AR methods take `&impl Executor`.
@@ -218,7 +220,7 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 2. `error.rs` with `Error`.
 3. `value.rs` + `IntoValue`/`FromValue` for std types; overflow checks.
 4. `row.rs`.
-5. `column.rs`, `expr.rs`, `order.rs`.
+5. `column.rs`, `ast/expr.rs`, `ast/order.rs`.
 6. `query/*` builders incl. `.all()` typestate, validation, `raw.rs`.
 7. `driver.rs` and `entity.rs` traits (no impls).
 8. Unit tests for builders/values.
