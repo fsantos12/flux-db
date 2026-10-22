@@ -20,7 +20,10 @@ fn val(v: Value) -> Box<Expr> {
 
 #[test]
 fn typed_column_converts_to_qualified_column_expr() {
-    assert_eq!(Expr::from(ID), Expr::Column(Column::qualified("users", "id")));
+    assert_eq!(
+        Expr::from(ID),
+        Expr::Column(Column::qualified("users", "id"))
+    );
     assert_eq!(Expr::col(ID), Expr::from(ID));
     assert_eq!(Expr::col(Column::new("x")), Expr::Column(Column::new("x")));
 }
@@ -45,7 +48,11 @@ fn typed_comparisons_build_binary_nodes_with_bound_values() {
     for (expr, op) in cases {
         assert_eq!(
             expr,
-            Expr::Binary { left: col(ID.column()), op, right: val(Value::I64(1)) }
+            Expr::Binary {
+                left: col(ID.column()),
+                op,
+                right: val(Value::I64(1))
+            }
         );
     }
 }
@@ -73,7 +80,11 @@ fn eq_none_builds_is_null_and_ne_none_builds_is_not_null() {
 fn eq_some_on_nullable_column_binds_the_inner_value() {
     assert_eq!(
         AGE.eq(Some(30)),
-        Expr::Binary { left: col(AGE.column()), op: BinaryOp::Eq, right: val(Value::I32(30)) }
+        Expr::Binary {
+            left: col(AGE.column()),
+            op: BinaryOp::Eq,
+            right: val(Value::I32(30))
+        }
     );
 }
 
@@ -94,14 +105,29 @@ fn in_lists_keep_order_and_values() {
     );
     assert_eq!(
         ID.not_in(vec![1]),
-        Expr::NotIn { expr: col(ID.column()), list: vec![Expr::value(1i64)] }
+        Expr::NotIn {
+            expr: col(ID.column()),
+            list: vec![Expr::value(1i64)]
+        }
     );
 }
 
 #[test]
 fn empty_in_lists_are_kept_empty_for_the_renderer() {
-    assert_eq!(ID.is_in([]), Expr::In { expr: col(ID.column()), list: vec![] });
-    assert_eq!(ID.not_in([]), Expr::NotIn { expr: col(ID.column()), list: vec![] });
+    assert_eq!(
+        ID.is_in([]),
+        Expr::In {
+            expr: col(ID.column()),
+            list: vec![]
+        }
+    );
+    assert_eq!(
+        ID.not_in([]),
+        Expr::NotIn {
+            expr: col(ID.column()),
+            list: vec![]
+        }
+    );
 }
 
 #[test]
@@ -129,11 +155,19 @@ fn very_large_in_list_is_built_without_loss() {
 fn between_and_not_between_are_inclusive_nodes() {
     assert_eq!(
         ID.between(1, 10),
-        Expr::Between { expr: col(ID.column()), low: val(Value::I64(1)), high: val(Value::I64(10)) }
+        Expr::Between {
+            expr: col(ID.column()),
+            low: val(Value::I64(1)),
+            high: val(Value::I64(10))
+        }
     );
     assert_eq!(
         ID.not_between(10, 1),
-        Expr::NotBetween { expr: col(ID.column()), low: val(Value::I64(10)), high: val(Value::I64(1)) }
+        Expr::NotBetween {
+            expr: col(ID.column()),
+            low: val(Value::I64(10)),
+            high: val(Value::I64(1))
+        }
     );
 }
 
@@ -141,17 +175,29 @@ fn between_and_not_between_are_inclusive_nodes() {
 fn like_helpers_keep_text_unescaped_for_the_dialect() {
     let cases = [
         (NAME.contains("50%"), LikePattern::Contains("50%".into())),
-        (NAME.starts_with("a_b"), LikePattern::StartsWith("a_b".into())),
+        (
+            NAME.starts_with("a_b"),
+            LikePattern::StartsWith("a_b".into()),
+        ),
         (NAME.ends_with("\\"), LikePattern::EndsWith("\\".into())),
         (NAME.contains(""), LikePattern::Contains(String::new())),
         (NAME.like("%%__"), LikePattern::Raw("%%__".into())),
     ];
     for (expr, pattern) in cases {
-        assert_eq!(expr, Expr::Like { expr: col(NAME.column()), pattern });
+        assert_eq!(
+            expr,
+            Expr::Like {
+                expr: col(NAME.column()),
+                pattern
+            }
+        );
     }
     assert_eq!(
         NAME.not_like("a%"),
-        Expr::NotLike { expr: col(NAME.column()), pattern: LikePattern::Raw("a%".into()) }
+        Expr::NotLike {
+            expr: col(NAME.column()),
+            pattern: LikePattern::Raw("a%".into())
+        }
     );
 }
 
@@ -160,8 +206,14 @@ fn and_or_flatten_on_the_left() {
     let a = ID.eq(1);
     let b = ID.eq(2);
     let c = ID.eq(3);
-    assert_eq!(a.clone().and(b.clone()).and(c.clone()), Expr::And(vec![a.clone(), b.clone(), c.clone()]));
-    assert_eq!(a.clone().or(b.clone()).or(c.clone()), Expr::Or(vec![a.clone(), b.clone(), c.clone()]));
+    assert_eq!(
+        a.clone().and(b.clone()).and(c.clone()),
+        Expr::And(vec![a.clone(), b.clone(), c.clone()])
+    );
+    assert_eq!(
+        a.clone().or(b.clone()).or(c.clone()),
+        Expr::Or(vec![a.clone(), b.clone(), c.clone()])
+    );
     assert_eq!(a.clone() & b.clone(), Expr::And(vec![a.clone(), b.clone()]));
     assert_eq!(a.clone() | b.clone(), Expr::Or(vec![a.clone(), b.clone()]));
 }
@@ -195,7 +247,10 @@ fn empty_all_and_any_are_always_true_and_false() {
 #[test]
 fn chaining_onto_always_true_keeps_semantics() {
     let a = ID.eq(1);
-    assert_eq!(Expr::always_true().and(a.clone()), Expr::And(vec![a.clone()]));
+    assert_eq!(
+        Expr::always_true().and(a.clone()),
+        Expr::And(vec![a.clone()])
+    );
     assert_eq!(Expr::always_false().or(a.clone()), Expr::Or(vec![a]));
 }
 
@@ -212,7 +267,10 @@ fn untyped_comparisons_accept_any_expression() {
     );
     assert_eq!(
         Expr::col(ID).in_list([Value::I64(1)]),
-        Expr::In { expr: col(ID.column()), list: vec![Expr::Value(Value::I64(1))] }
+        Expr::In {
+            expr: col(ID.column()),
+            list: vec![Expr::Value(Value::I64(1))]
+        }
     );
 }
 
@@ -221,7 +279,10 @@ fn raw_keeps_params_separate_from_sql() {
     let e = Expr::raw("lower(name) = ?", vec![Value::String("x'--".into())]);
     assert_eq!(
         e,
-        Expr::Raw { sql: "lower(name) = ?".into(), params: vec![Value::String("x'--".into())] }
+        Expr::Raw {
+            sql: "lower(name) = ?".into(),
+            params: vec![Value::String("x'--".into())]
+        }
     );
 }
 

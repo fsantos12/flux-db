@@ -50,13 +50,18 @@ fn string_shortcuts_wrap_exactly_one_argument() {
 #[test]
 fn coalesce_keeps_argument_order() {
     let built = AGE.coalesce(Expr::value(0_i32));
-    assert_eq!(built, call(Func::Coalesce, vec![Expr::from(AGE), Expr::value(0_i32)]));
+    assert_eq!(
+        built,
+        call(Func::Coalesce, vec![Expr::from(AGE), Expr::value(0_i32)])
+    );
 }
 
 #[test]
 fn coalesce_can_be_chained_but_nests() {
     // a.coalesce(b).coalesce(c) is COALESCE(COALESCE(a, b), c), not a flat list.
-    let built = AGE.coalesce(Expr::value(1_i32)).coalesce(Expr::value(2_i32));
+    let built = AGE
+        .coalesce(Expr::value(1_i32))
+        .coalesce(Expr::value(2_i32));
     let inner = call(Func::Coalesce, vec![Expr::from(AGE), Expr::value(1_i32)]);
     assert_eq!(built, call(Func::Coalesce, vec![inner, Expr::value(2_i32)]));
 }
@@ -64,8 +69,14 @@ fn coalesce_can_be_chained_but_nests() {
 #[test]
 fn func_accepts_any_arity_so_renderer_must_validate() {
     // Core does not check argument counts; sql-render returns InvalidQuery (blueprint 01).
-    assert_eq!(Expr::func(Func::Coalesce, Vec::<Expr>::new()), call(Func::Coalesce, vec![]));
-    let three = Expr::func(Func::Count, [Expr::from(AGE), Expr::from(AGE), Expr::from(AGE)]);
+    assert_eq!(
+        Expr::func(Func::Coalesce, Vec::<Expr>::new()),
+        call(Func::Coalesce, vec![])
+    );
+    let three = Expr::func(
+        Func::Count,
+        [Expr::from(AGE), Expr::from(AGE), Expr::from(AGE)],
+    );
     assert!(matches!(three, Expr::Func { ref args, .. } if args.len() == 3));
 }
 
@@ -74,7 +85,10 @@ fn nested_functions_compose() {
     let built = NAME.trim().lower().length();
     let expected = call(
         Func::Length,
-        vec![call(Func::Lower, vec![call(Func::Trim, vec![Expr::from(NAME)])])],
+        vec![call(
+            Func::Lower,
+            vec![call(Func::Trim, vec![Expr::from(NAME)])],
+        )],
     );
     assert_eq!(built, expected);
 }
@@ -82,7 +96,9 @@ fn nested_functions_compose() {
 #[test]
 fn functions_compare_like_any_expression() {
     let cond = AGE.count().greater_than(Expr::value(5_i64));
-    assert!(matches!(cond, Expr::Binary { ref left, .. } if matches!(**left, Expr::Func { func: Func::Count, .. })));
+    assert!(
+        matches!(cond, Expr::Binary { ref left, .. } if matches!(**left, Expr::Func { func: Func::Count, .. }))
+    );
     let cond = Expr::count_all().greater_or_equal(Expr::value(1_i64));
     assert!(matches!(cond, Expr::Binary { ref left, .. } if **left == Expr::CountAll));
 }
@@ -91,7 +107,9 @@ fn functions_compare_like_any_expression() {
 fn hostile_text_in_function_args_stays_a_bound_value() {
     let evil = "'); DROP TABLE users; --";
     let built = NAME.coalesce(Expr::value(evil.to_string()));
-    let Expr::Func { args, .. } = built else { panic!("expected Func") };
+    let Expr::Func { args, .. } = built else {
+        panic!("expected Func")
+    };
     assert_eq!(args[1], Expr::value(evil.to_string()));
 }
 

@@ -9,7 +9,10 @@ use flux_db_core::types::value::{FromValue, IntoValue, Value};
 /// carrying the given expected and received names.
 fn assert_conversion<T: FromValue + std::fmt::Debug>(value: Value, expected: &str, received: &str) {
     match T::from_value(value) {
-        Err(Error::Conversion { expected: e, received: r }) => {
+        Err(Error::Conversion {
+            expected: e,
+            received: r,
+        }) => {
             assert_eq!(e, expected);
             assert_eq!(r, received);
         }
@@ -106,24 +109,48 @@ fn option_still_rejects_wrong_type() {
 
 #[test]
 fn lossless_integer_widening_is_allowed() {
-    assert_eq!(i16::from_value(Value::I8(i8::MIN)).unwrap(), i16::from(i8::MIN));
+    assert_eq!(
+        i16::from_value(Value::I8(i8::MIN)).unwrap(),
+        i16::from(i8::MIN)
+    );
     assert_eq!(i16::from_value(Value::U8(u8::MAX)).unwrap(), 255);
     assert_eq!(i32::from_value(Value::I16(i16::MIN)).unwrap(), -32768);
     assert_eq!(i32::from_value(Value::U16(u16::MAX)).unwrap(), 65535);
-    assert_eq!(i64::from_value(Value::I32(i32::MIN)).unwrap(), i64::from(i32::MIN));
-    assert_eq!(i64::from_value(Value::U32(u32::MAX)).unwrap(), i64::from(u32::MAX));
-    assert_eq!(i128::from_value(Value::I64(i64::MIN)).unwrap(), i128::from(i64::MIN));
-    assert_eq!(i128::from_value(Value::U64(u64::MAX)).unwrap(), i128::from(u64::MAX));
+    assert_eq!(
+        i64::from_value(Value::I32(i32::MIN)).unwrap(),
+        i64::from(i32::MIN)
+    );
+    assert_eq!(
+        i64::from_value(Value::U32(u32::MAX)).unwrap(),
+        i64::from(u32::MAX)
+    );
+    assert_eq!(
+        i128::from_value(Value::I64(i64::MIN)).unwrap(),
+        i128::from(i64::MIN)
+    );
+    assert_eq!(
+        i128::from_value(Value::U64(u64::MAX)).unwrap(),
+        i128::from(u64::MAX)
+    );
     assert_eq!(u16::from_value(Value::U8(u8::MAX)).unwrap(), 255);
     assert_eq!(u32::from_value(Value::U16(u16::MAX)).unwrap(), 65535);
-    assert_eq!(u64::from_value(Value::U32(u32::MAX)).unwrap(), u64::from(u32::MAX));
-    assert_eq!(u128::from_value(Value::U64(u64::MAX)).unwrap(), u128::from(u64::MAX));
+    assert_eq!(
+        u64::from_value(Value::U32(u32::MAX)).unwrap(),
+        u64::from(u32::MAX)
+    );
+    assert_eq!(
+        u128::from_value(Value::U64(u64::MAX)).unwrap(),
+        u128::from(u64::MAX)
+    );
 }
 
 #[test]
 fn float_widening_is_allowed() {
     assert_eq!(f64::from_value(Value::F32(1.5)).unwrap(), 1.5);
-    assert_eq!(f64::from_value(Value::F32(f32::INFINITY)).unwrap(), f64::INFINITY);
+    assert_eq!(
+        f64::from_value(Value::F32(f32::INFINITY)).unwrap(),
+        f64::INFINITY
+    );
     assert!(f64::from_value(Value::F32(f32::NAN)).unwrap().is_nan());
 }
 
@@ -151,11 +178,7 @@ fn int_float_and_decimal_crossings_are_conversion_errors() {
     assert_conversion::<f64>(Value::I32(1), "f64", "i32");
     assert_conversion::<i64>(Value::F64(1.0), "i64", "f64");
     assert_conversion::<rust_decimal::Decimal>(Value::I64(1), "Decimal", "i64");
-    assert_conversion::<f64>(
-        Value::Decimal(rust_decimal::Decimal::ONE),
-        "f64",
-        "Decimal",
-    );
+    assert_conversion::<f64>(Value::Decimal(rust_decimal::Decimal::ONE), "f64", "Decimal");
 }
 
 #[test]
@@ -168,7 +191,11 @@ fn non_numeric_mismatches_are_conversion_errors() {
         "Timestamp",
         "DateTime<Utc>",
     );
-    assert_conversion::<uuid::Uuid>(Value::String(uuid::Uuid::nil().to_string()), "Uuid", "String");
+    assert_conversion::<uuid::Uuid>(
+        Value::String(uuid::Uuid::nil().to_string()),
+        "Uuid",
+        "String",
+    );
     assert_conversion::<serde_json::Value>(Value::String("{}".into()), "Json", "String");
     assert_conversion::<Vec<u8>>(Value::String("x".into()), "Vec<u8>", "String");
 }
@@ -178,13 +205,19 @@ fn type_name_matches_conversion_names() {
     assert_eq!(Value::Null.type_name(), "null");
     assert_eq!(Value::Bool(true).type_name(), "bool");
     assert_eq!(Value::U128(0).type_name(), "u128");
-    assert_eq!(Value::TimestampTz(chrono::DateTime::<chrono::Utc>::MIN_UTC).type_name(), "DateTime<Utc>");
+    assert_eq!(
+        Value::TimestampTz(chrono::DateTime::<chrono::Utc>::MIN_UTC).type_name(),
+        "DateTime<Utc>"
+    );
     assert_eq!(Value::Bytes(vec![]).type_name(), "Vec<u8>");
 }
 
 #[test]
 fn error_display_messages() {
-    assert_eq!(Error::invalid_query("empty insert").to_string(), "invalid query: empty insert");
+    assert_eq!(
+        Error::invalid_query("empty insert").to_string(),
+        "invalid query: empty insert"
+    );
     assert_eq!(
         Error::conversion("i32", "String").to_string(),
         "type conversion failed: expected `i32`, received `String`"
