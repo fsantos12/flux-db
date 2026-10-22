@@ -1,8 +1,8 @@
 //! Unit tests for the `Expr` AST and typed column helpers.
 
 use flux_db_core::ast::expr::{BinaryOp, Expr, LikePattern};
-use flux_db_core::column::{Column, TypedColumn};
-use flux_db_core::value::Value;
+use flux_db_core::types::column::{Column, TypedColumn};
+use flux_db_core::types::value::Value;
 
 struct User;
 

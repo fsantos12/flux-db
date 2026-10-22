@@ -21,8 +21,8 @@
 //! assert!(matches!(filter, Expr::And(ref parts) if parts.len() == 2));
 //! ```
 
-use crate::column::{Column, TypedColumn};
-use crate::value::{IntoValue, Value};
+use crate::types::column::{Column, TypedColumn};
+use crate::types::value::{IntoValue, Value};
 
 /// Binary comparison operators.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

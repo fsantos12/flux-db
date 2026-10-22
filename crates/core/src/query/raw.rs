@@ -1,6 +1,6 @@
 //! Raw SQL escape hatch: the SQL text is sent as-is, and parameters are always bound.
 
-use crate::value::{IntoValue, Value};
+use crate::types::value::{IntoValue, Value};
 
 /// A full raw statement with bound parameters.
 ///

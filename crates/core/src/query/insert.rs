@@ -21,10 +21,10 @@
 //! ```
 
 use crate::ast::expr::Expr;
-use crate::column::{Column, TypedColumn};
-use crate::error::{Error, Result};
+use crate::types::column::{Column, TypedColumn};
+use crate::types::error::{Error, Result};
 use crate::query::duplicate_column;
-use crate::value::IntoValue;
+use crate::types::value::IntoValue;
 
 /// One row of values for an [`Insert`].
 ///

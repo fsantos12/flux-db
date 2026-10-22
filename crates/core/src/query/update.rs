@@ -22,11 +22,11 @@
 use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
-use crate::column::{Column, TypedColumn};
-use crate::error::{Error, Result};
+use crate::types::column::{Column, TypedColumn};
+use crate::types::error::{Error, Result};
 use crate::query::duplicate_column;
 use crate::query::state::{All, Executable, Filtered, Unfiltered};
-use crate::value::IntoValue;
+use crate::types::value::IntoValue;
 
 /// One `column = value` assignment in a `SET` clause.
 #[derive(Debug, Clone, PartialEq)]

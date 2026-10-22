@@ -18,7 +18,7 @@
 //! assert!(i8::from_value(Value::I64(7)).is_err());
 //! ```
 
-use crate::error::{Error, Result};
+use crate::types::error::{Error, Result};
 
 /// Converts a Rust type into a [`Value`].
 pub trait IntoValue {

@@ -9,7 +9,7 @@ pub mod select;
 pub mod state;
 pub mod update;
 
-use crate::column::Column;
+use crate::types::column::Column;
 
 /// Returns the first column name that appears more than once.
 ///

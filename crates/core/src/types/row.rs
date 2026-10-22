@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use crate::error::{Error, Result};
-use crate::value::{FromValue, Value};
+use crate::types::error::{Error, Result};
+use crate::types::value::{FromValue, Value};
 
 /// An ordered set of column names and their values.
 #[derive(Debug, Clone, PartialEq, Default)]

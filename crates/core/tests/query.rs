@@ -1,21 +1,21 @@
 //! Unit tests for the SELECT, INSERT, UPDATE, DELETE and raw query builders.
 
 use flux_db_core::ast::expr::Expr;
-use flux_db_core::column::{Column, TypedColumn};
-use flux_db_core::error::Error;
+use flux_db_core::types::column::{Column, TypedColumn};
+use flux_db_core::types::error::Error;
 use flux_db_core::query::delete::Delete;
 use flux_db_core::query::insert::{Insert, InsertRow};
 use flux_db_core::query::raw::RawQuery;
 use flux_db_core::query::select::Select;
 use flux_db_core::query::update::Update;
-use flux_db_core::value::{IntoValue, Value};
+use flux_db_core::types::value::{IntoValue, Value};
 
 struct User;
 const ID: TypedColumn<User, i64> = TypedColumn::new("users", "id");
 const AGE: TypedColumn<User, Option<i32>> = TypedColumn::new("users", "age");
 const NAME: TypedColumn<User, String> = TypedColumn::new("users", "name");
 
-fn is_invalid(r: flux_db_core::error::Result<()>) -> bool {
+fn is_invalid(r: flux_db_core::types::error::Result<()>) -> bool {
     matches!(r, Err(Error::InvalidQuery(_)))
 }
 

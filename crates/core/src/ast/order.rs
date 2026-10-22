@@ -16,7 +16,7 @@
 //! ```
 
 use crate::ast::expr::Expr;
-use crate::column::TypedColumn;
+use crate::types::column::TypedColumn;
 
 /// Sort direction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

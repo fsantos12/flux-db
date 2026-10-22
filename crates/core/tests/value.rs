@@ -2,8 +2,8 @@
 
 use std::error::Error as StdError;
 
-use flux_db_core::error::Error;
-use flux_db_core::value::{FromValue, IntoValue, Value};
+use flux_db_core::types::error::Error;
+use flux_db_core::types::value::{FromValue, IntoValue, Value};
 
 /// Asserts that converting `value` into `T` fails with `Conversion`
 /// carrying the given expected and received names.

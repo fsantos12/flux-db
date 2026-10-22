@@ -3,7 +3,7 @@
 use flux_db_core::ast::expr::Expr;
 use flux_db_core::ast::group::GroupBy;
 use flux_db_core::ast::order::{Direction, NullsOrder, OrderBy};
-use flux_db_core::column::{Column, TypedColumn};
+use flux_db_core::types::column::{Column, TypedColumn};
 
 struct User;
 const AGE: TypedColumn<User, Option<i32>> = TypedColumn::new("users", "age");
