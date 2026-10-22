@@ -26,7 +26,7 @@ fn typed_column_const_accessors() {
 }
 
 #[test]
-fn static_and_dynamic_columns_with_same_name_are_equal() {
+fn static_and_string_columns_with_same_name_are_equal() {
     assert_eq!(Column::new("id"), Column::string(String::from("id")));
     assert_eq!(
         Column::qualified("users", "id"),
@@ -36,7 +36,7 @@ fn static_and_dynamic_columns_with_same_name_are_equal() {
 }
 
 #[test]
-fn dynamic_column_accessors() {
+fn string_column_accessors() {
     let c = Column::string_qualified(String::from("t"), format!("c{}", 1));
     assert_eq!(c.name(), "c1");
     assert_eq!(c.table(), Some("t"));
@@ -44,7 +44,7 @@ fn dynamic_column_accessors() {
 }
 
 #[test]
-fn static_and_dynamic_same_name_is_duplicate_in_insert() {
+fn static_and_string_same_name_is_duplicate_in_insert() {
     let row = InsertRow::new()
         .set(Column::new("id"), 1i64.into_value())
         .set(Column::string(String::from("id")), 2i64.into_value());
@@ -61,7 +61,7 @@ fn qualified_and_bare_same_name_is_duplicate_in_insert() {
 }
 
 #[test]
-fn empty_dynamic_name_is_accepted_in_core() {
+fn empty_string_name_is_accepted_in_core() {
     // Core accepts any name; rejection with InvalidQuery belongs to sql-render.
     let c = Column::string(String::new());
     assert_eq!(c.name(), "");
@@ -70,7 +70,7 @@ fn empty_dynamic_name_is_accepted_in_core() {
 }
 
 #[test]
-fn dynamic_table_names_in_builders() {
+fn string_table_names_in_builders() {
     let t = format!("tenant_{}", 7);
     let q = Insert::into(t.clone()).row(InsertRow::new().set(Column::new("id"), 1i64.into_value()));
     assert!(q.validate().is_ok());
