@@ -55,6 +55,33 @@ pub enum LikePattern {
     Raw(String),
 }
 
+/// Portable SQL functions; each dialect maps them to its own spelling
+/// (for example `LENGTH` vs `LEN`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Func {
+    /// `LOWER(x)`
+    Lower,
+    /// `UPPER(x)`
+    Upper,
+    /// `LENGTH(x)`
+    Length,
+    /// `TRIM(x)`
+    Trim,
+    /// `COALESCE(a, b, ...)`
+    Coalesce,
+    /// `COUNT(x)`
+    Count,
+    /// `SUM(x)`
+    Sum,
+    /// `AVG(x)`
+    Avg,
+    /// `MIN(x)`
+    Min,
+    /// `MAX(x)`
+    Max,
+}
+
 /// An owned expression node. Holds values, never SQL (except [`Expr::Raw`]).
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -135,6 +162,17 @@ pub enum Expr {
         /// Parameters bound to the fragment's placeholders.
         params: Vec<Value>,
     },
+    /// Current timestamp; each dialect renders its own form.
+    Now,
+    /// `COUNT(*)`.
+    CountAll,
+    /// A portable function call.
+    Func {
+        /// Function to call.
+        func: Func,
+        /// Call arguments, in order.
+        args: Vec<Expr>,
+    },
 }
 
 impl Expr {
@@ -167,6 +205,80 @@ impl Expr {
             sql: sql.into(),
             params,
         }
+    }
+
+    // --- Functions ---
+
+    /// The database's current timestamp.
+    pub const fn now() -> Self {
+        Self::Now
+    }
+
+    /// `COUNT(*)`.
+    pub const fn count_all() -> Self {
+        Self::CountAll
+    }
+
+    /// Calls a portable function with the given arguments.
+    pub fn func<I>(func: Func, args: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<Expr>,
+    {
+        Self::Func {
+            func,
+            args: args.into_iter().map(Into::into).collect(),
+        }
+    }
+
+    /// `LOWER(self)`.
+    pub fn lower(self) -> Self {
+        Self::func(Func::Lower, [self])
+    }
+
+    /// `UPPER(self)`.
+    pub fn upper(self) -> Self {
+        Self::func(Func::Upper, [self])
+    }
+
+    /// `LENGTH(self)`.
+    pub fn length(self) -> Self {
+        Self::func(Func::Length, [self])
+    }
+
+    /// `TRIM(self)`.
+    pub fn trim(self) -> Self {
+        Self::func(Func::Trim, [self])
+    }
+
+    /// `COUNT(self)`.
+    pub fn count(self) -> Self {
+        Self::func(Func::Count, [self])
+    }
+
+    /// `SUM(self)`.
+    pub fn sum(self) -> Self {
+        Self::func(Func::Sum, [self])
+    }
+
+    /// `AVG(self)`.
+    pub fn avg(self) -> Self {
+        Self::func(Func::Avg, [self])
+    }
+
+    /// `MIN(self)`.
+    pub fn min(self) -> Self {
+        Self::func(Func::Min, [self])
+    }
+
+    /// `MAX(self)`.
+    pub fn max(self) -> Self {
+        Self::func(Func::Max, [self])
+    }
+
+    /// `COALESCE(self, fallback)`.
+    pub fn coalesce(self, fallback: impl Into<Expr>) -> Self {
+        Self::func(Func::Coalesce, [self, fallback.into()])
     }
 
     // --- Building from a list ---
@@ -496,5 +608,61 @@ impl<E> TypedColumn<E, String> {
             expr: Box::new(self.into()),
             pattern,
         }
+    }
+}
+
+/// Function shortcuts available on every typed column.
+impl<E, T> TypedColumn<E, T> {
+    /// `COUNT(col)`.
+    pub fn count(self) -> Expr {
+        Expr::from(self).count()
+    }
+
+    /// `SUM(col)`.
+    pub fn sum(self) -> Expr {
+        Expr::from(self).sum()
+    }
+
+    /// `AVG(col)`.
+    pub fn avg(self) -> Expr {
+        Expr::from(self).avg()
+    }
+
+    /// `MIN(col)`.
+    pub fn min(self) -> Expr {
+        Expr::from(self).min()
+    }
+
+    /// `MAX(col)`.
+    pub fn max(self) -> Expr {
+        Expr::from(self).max()
+    }
+
+    /// `COALESCE(col, fallback)`.
+    pub fn coalesce(self, fallback: impl Into<Expr>) -> Expr {
+        Expr::from(self).coalesce(fallback)
+    }
+}
+
+/// String function shortcuts only exist on text columns.
+impl<E> TypedColumn<E, String> {
+    /// `LOWER(col)`.
+    pub fn lower(self) -> Expr {
+        Expr::from(self).lower()
+    }
+
+    /// `UPPER(col)`.
+    pub fn upper(self) -> Expr {
+        Expr::from(self).upper()
+    }
+
+    /// `LENGTH(col)`.
+    pub fn length(self) -> Expr {
+        Expr::from(self).length()
+    }
+
+    /// `TRIM(col)`.
+    pub fn trim(self) -> Expr {
+        Expr::from(self).trim()
     }
 }
