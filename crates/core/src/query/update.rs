@@ -24,6 +24,7 @@ use std::marker::PhantomData;
 use crate::ast::expr::Expr;
 use crate::column::{Column, TypedColumn};
 use crate::error::{Error, Result};
+use crate::query::duplicate_column;
 use crate::query::state::{All, Executable, Filtered, Unfiltered};
 use crate::value::IntoValue;
 
@@ -117,6 +118,12 @@ impl<S> Update<S> {
         if self.assignments.is_empty() {
             return Err(Error::invalid_query(format!(
                 "UPDATE {} has no SET assignments",
+                self.table
+            )));
+        }
+        if let Some(name) = duplicate_column(self.assignments.iter().map(|a| &a.column)) {
+            return Err(Error::invalid_query(format!(
+                "UPDATE {}: column {name} is assigned more than once",
                 self.table
             )));
         }

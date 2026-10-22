@@ -23,15 +23,16 @@
 use crate::ast::expr::Expr;
 use crate::column::{Column, TypedColumn};
 use crate::error::{Error, Result};
+use crate::query::duplicate_column;
 use crate::value::IntoValue;
 
 /// One row of values for an [`Insert`].
 #[derive(Debug, Clone, PartialEq, Default)]
+///
+/// Fields are private so `columns` and `values` always have the same length.
 pub struct InsertRow {
-    /// Columns, in call order.
-    pub columns: Vec<Column>,
-    /// Values, one per column.
-    pub values: Vec<Expr>,
+    columns: Vec<Column>,
+    values: Vec<Expr>,
 }
 
 impl InsertRow {
@@ -50,6 +51,16 @@ impl InsertRow {
         self.columns.push(column.into());
         self.values.push(value.into());
         self
+    }
+
+    /// Columns, in call order.
+    pub fn columns(&self) -> &[Column] {
+        &self.columns
+    }
+
+    /// Values, one per column, in the same order as [`columns`](Self::columns).
+    pub fn values(&self) -> &[Expr] {
+        &self.values
     }
 }
 
@@ -102,7 +113,8 @@ impl Insert {
     /// # Errors
     ///
     /// Returns [`Error::InvalidQuery`] when there are no rows, the first row
-    /// sets no columns, or a row sets different columns than row 0.
+    /// sets no columns or the same column twice, or a row sets different
+    /// columns than row 0.
     pub fn validate(&self) -> Result<()> {
         let Some(first) = self.rows.first() else {
             return Err(Error::invalid_query(format!(
@@ -113,6 +125,13 @@ impl Insert {
         if first.columns.is_empty() {
             return Err(Error::invalid_query(format!(
                 "INSERT INTO {} has no columns",
+                self.table
+            )));
+        }
+        // Other rows must match row 0, so checking it is enough.
+        if let Some(name) = duplicate_column(&first.columns) {
+            return Err(Error::invalid_query(format!(
+                "INSERT INTO {}: column {name} is set more than once",
                 self.table
             )));
         }

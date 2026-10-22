@@ -67,7 +67,7 @@ fn insert_single_row_is_valid_and_keeps_call_order() {
     let q = Insert::into("users").row(InsertRow::new().set_value(NAME, "a".into()).set_value(AGE, None));
     assert!(q.validate().is_ok());
     assert_eq!(q.columns(), &[NAME.column(), AGE.column()]);
-    assert_eq!(q.rows[0].values[1], Expr::Value(Value::Null));
+    assert_eq!(q.rows[0].values()[1], Expr::Value(Value::Null));
 }
 
 #[test]
@@ -92,7 +92,7 @@ fn insert_rows_with_a_missing_column_is_invalid() {
 fn insert_accepts_expressions_as_values() {
     let q = Insert::into("users").row(InsertRow::new().set(Column::new("created_at"), Expr::now()));
     assert!(q.validate().is_ok());
-    assert_eq!(q.rows[0].values, vec![Expr::Now]);
+    assert_eq!(q.rows[0].values(), &[Expr::Now]);
 }
 
 #[test]
@@ -105,18 +105,9 @@ fn bulk_insert_of_10k_rows_validates() {
 }
 
 #[test]
-#[ignore = "finding: validate() accepts a row that sets the same column twice"]
 fn insert_duplicate_column_in_a_row_is_invalid() {
     let q = Insert::into("users").row(InsertRow::new().set_value(NAME, "a".into()).set_value(NAME, "b".into()));
     assert!(is_invalid(q.validate()));
-}
-
-#[test]
-#[ignore = "finding: validate() does not check values.len() == columns.len() (fields are pub)"]
-fn insert_row_with_fewer_values_than_columns_is_invalid() {
-    let mut row = InsertRow::new().set_value(NAME, "a".into()).set_value(AGE, Some(1));
-    row.values.pop();
-    assert!(is_invalid(Insert::into("users").row(row).validate()));
 }
 
 // --- UPDATE ---
@@ -153,7 +144,6 @@ fn update_set_column_from_another_expression() {
 }
 
 #[test]
-#[ignore = "finding: validate() accepts SET name = .., name = .. (Postgres rejects it)"]
 fn update_duplicate_assignment_is_invalid() {
     let q = Update::table("users").all().set_value(NAME, "a".into()).set_value(NAME, "b".into());
     assert!(is_invalid(q.validate()));
