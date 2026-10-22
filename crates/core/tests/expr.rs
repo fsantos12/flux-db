@@ -64,12 +64,9 @@ fn hostile_text_stays_a_value_never_sql() {
 }
 
 #[test]
-fn eq_none_builds_binary_with_null_for_the_renderer() {
-    // The renderer turns `= NULL` / `<> NULL` into IS NULL / IS NOT NULL (tested in sql-render).
-    assert_eq!(
-        AGE.eq(None),
-        Expr::Binary { left: col(AGE.column()), op: BinaryOp::Eq, right: val(Value::Null) }
-    );
+fn eq_none_builds_is_null_and_ne_none_builds_is_not_null() {
+    assert_eq!(AGE.eq(None), Expr::IsNull(col(AGE.column())));
+    assert_eq!(AGE.ne(None), Expr::IsNotNull(col(AGE.column())));
 }
 
 #[test]

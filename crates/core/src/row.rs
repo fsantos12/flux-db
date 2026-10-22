@@ -9,7 +9,7 @@ use crate::value::{FromValue, Value};
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Row {
     columns: Arc<[Box<str>]>,
-    values: Vec<Value>
+    values: Vec<Value>,
 }
 
 impl Row {
@@ -57,7 +57,10 @@ impl Row {
         if index >= self.values.len() {
             return Err(Error::decode(
                 format!("#{index}"),
-                format!("index out of bounds (row has {} columns)", self.values.len()),
+                format!(
+                    "index out of bounds (row has {} columns)",
+                    self.values.len()
+                ),
             ));
         }
         self.decode_at(index)
