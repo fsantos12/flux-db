@@ -36,6 +36,12 @@ impl Column {
     }
 }
 
+impl<E, T> From<TypedColumn<E, T>> for Column {
+    fn from(column: TypedColumn<E, T>) -> Self {
+        column.column()
+    }
+}
+
 /// A column bound to entity `E` with Rust type `T`.
 ///
 /// `T` drives which helpers are available (e.g. `is_null` only on
