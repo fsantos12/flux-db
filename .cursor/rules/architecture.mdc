@@ -21,7 +21,7 @@ Source of truth: `docs/blueprints/` (see `01-foundation.md`). Changes to archite
 - Drivers chosen at compile time via generics. No `AnyDriver`, no `dyn Driver`.
 - Native `async fn` in traits (edition 2024, rust-version 1.99). No `async-trait`.
 - Typed columns are the primary API; string `col("x")` is the escape hatch. Both build the same AST.
-- All values are bound parameters. Identifiers are always quoted by the dialect. LIKE patterns are a `LikePattern` enum; the dialect escapes Contains/StartsWith/EndsWith, only `Raw` passes through. Query AST data (Expr, OrderBy) lives in `core/src/ast/`, builders in `core/src/query/`. Raw SQL only via `query_raw` with bound params.
+- All values are bound parameters. Identifiers are always quoted by the dialect. LIKE patterns are a `LikePattern` enum; the dialect escapes Contains/StartsWith/EndsWith, only `Raw` passes through. Base types (Value, Row, Column, Error) live in `core/src/types/`; query AST data (Expr, OrderBy) lives in `core/src/ast/`, builders in `core/src/query/`, driver traits in `core/src/driver/` (traits only; impls live in driver crates). Raw SQL only via `query_raw` with bound params.
 - Errors, never panics, on bad input (`FromRow` returns `Result`, empty insert is an error, unfiltered UPDATE/DELETE requires `.all()`).
 - No silent lossy conversions (e.g. `u64` overflow is an error, unknown types are errors, not NULL).
 - SQL generation lives only in `flux-db-sql-render`; drivers never `format!` SQL.

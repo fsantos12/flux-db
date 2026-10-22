@@ -13,7 +13,7 @@ Lay the base of flux-db: a Cargo workspace with a runtime-agnostic core (values,
 - SELECT / INSERT / UPDATE / DELETE with WHERE, ORDER BY, LIMIT/OFFSET, RETURNING.
 - Expressions: `=`, `<>`, `<`, `<=`, `>`, `>=`, `IS NULL`, `IS NOT NULL`, `IN`, `NOT IN`, `LIKE` (escaped), `AND`/`OR`/`NOT`.
 - Typed columns from the derive, string columns as escape hatch.
-- Streaming fetch plus `fetch_all` / `fetch_one` / `fetch_optional` / `execute`.
+- Streaming fetch plus `fetch_all` / `fetch_one` / `fetch_one_optional` / `execute`.
 - Transactions (commit explicitly; rollback on drop).
 - Configurable pool (deadpool-postgres); TLS via rustls (`tls` feature).
 - Minimal raw SQL: `query_raw` / `Expr::raw`, bound params only.
@@ -109,7 +109,8 @@ pub trait Executor: Send + Sync {
     async fn execute(&self, q: &Query) -> Result<u64>;
     fn fetch<'a>(&'a self, q: &'a Query) -> impl Stream<Item = Result<Row>> + Send + 'a;
     async fn fetch_all(&self, q: &Query) -> Result<Vec<Row>>;
-    async fn fetch_optional(&self, q: &Query) -> Result<Option<Row>>;
+    async fn fetch_one_optional(&self, q: &Query) -> Result<Option<Row>>;
+    async fn fetch_one(&self, q: &Query) -> Result<Row>; // default: fetch_one_optional, None → Error::NotFound
 }
 pub trait Connection: Executor { type Tx<'c>: Transaction where Self: 'c; async fn begin(&mut self) -> Result<Self::Tx<'_>>; }
 pub trait Transaction: Executor { async fn commit(self) -> Result<()>; async fn rollback(self) -> Result<()>; }
@@ -136,10 +137,12 @@ flux-db/
 │   ├── core/                   # package flux-db-core
 │   │   └── src/
 │   │   ├── lib.rs
-│   │   ├── value.rs            # Value enum, IntoValue / FromValue
-│   │   ├── row.rs              # Row (column names + values), get::<T>(name)
-│   │   ├── error.rs            # Error (InvalidQuery, Conversion, Decode, NotFound, Driver)
-│   │   ├── column.rs           # Column, TypedColumn<E, T>, col()
+│   │   ├── types/
+│   │   │   ├── mod.rs
+│   │   │   ├── value.rs        # Value enum, IntoValue / FromValue
+│   │   │   ├── row.rs          # Row (column names + values), get::<T>(name)
+│   │   │   ├── error.rs        # Error (InvalidQuery, Conversion, Decode, NotFound, Driver)
+│   │   │   └── column.rs       # Column, TypedColumn<E, T>, col()
 │   │   ├── ast/
 │   │   │   ├── mod.rs
 │   │   │   ├── expr.rs         # Expr tree (filters + projections), LikePattern enum, Between
@@ -151,7 +154,12 @@ flux-db/
 │   │   │   ├── update.rs       # typestate: Unfiltered -> Filtered | All
 │   │   │   ├── delete.rs       # same typestate as update
 │   │   │   └── raw.rs          # RawQuery: sql + bound params
-│   │   ├── driver.rs           # Driver, Executor, Connection, Transaction
+│   │   ├── driver/             # traits only, no impls
+│   │   │   ├── mod.rs          # re-exports
+│   │   │   ├── driver.rs       # Driver (acquire)
+│   │   │   ├── executor.rs     # Executor (execute, fetch, fetch_all/optional)
+│   │   │   ├── connection.rs   # Connection (begin)
+│   │   │   └── transaction.rs  # Transaction (commit, rollback)
 │   │   └── entity.rs           # FromRow, Entity, ColumnDef, EntityQuery<E>
 │   ├── sql-render/             # package flux-db-sql-render (deps: flux-db-core)
 │   │   └── src/
@@ -192,7 +200,7 @@ Facade features: `default = ["entity"]`, `postgres` (off by default), `entity`, 
 - **Column**: `{ table: Option<Ident>, name: Ident }`. `TypedColumn<E, T>` wraps it with `PhantomData`; ops require `IntoValue` matching `T` (`Option<T>` columns get `is_null`).
 - **Expr**: `Column | Value | Binary(op) | Not | And(Vec) | Or(Vec) | IsNull | In(Vec<Value>) | Like { pattern, escaped } | Raw { sql, params } | Now | CountAll | Func { func, args }` (portable `Func`: Lower, Upper, Length, Trim, Coalesce, Count, Sum, Avg, Min, Max; dialect maps names, e.g. Now/Length per backend) (bound params only). `Between/NotBetween` included; `LikePattern` enum (Contains/StartsWith/EndsWith/Raw), escaping of `%`, `_`, `\` done by the dialect in sql-render; `like()` takes a raw pattern explicitly.
 - **Queries**: owned structs; builders consume `self`. `Insert` requires ≥1 row & ≥1 column at render time → `Error::InvalidQuery`. Multi-row insert requires identical column sets (else `InvalidQuery`).
-- **Error**: `#[non_exhaustive] pub enum Error { InvalidQuery(String), Conversion { expected: &'static str, received: &'static str }, Decode { column: String, message: String }, NotFound, Driver(Box<dyn std::error::Error + Send + Sync>) }` in `crates/core/src/error.rs`. `InvalidQuery`: empty insert, unfiltered write, bad identifier, mismatched multi-row insert, UPDATE with no SET, >65535 params, `.all()` fallback. `Conversion`: `FromValue` type mismatch or lossy/narrowing conversion (no column). `Decode`: column-scoped row decode failure: missing column, overflow (`u64` > `i64::MAX`), NULL into non-`Option`, unknown DB type. `NotFound`: `fetch_one`/`find` with no rows. `Driver`: the original driver error (e.g. `tokio_postgres::Error`, pool errors) passed through untouched; users downcast for SQLSTATE/timeout/pool info.
+- **Error**: `#[non_exhaustive] pub enum Error { InvalidQuery(String), Conversion { expected: &'static str, received: &'static str }, Decode { column: String, message: String }, NotFound, Driver(Box<dyn std::error::Error + Send + Sync>) }` in `crates/core/src/types/error.rs`. `InvalidQuery`: empty insert, unfiltered write, bad identifier, mismatched multi-row insert, UPDATE with no SET, >65535 params, `.all()` fallback. `Conversion`: `FromValue` type mismatch or lossy/narrowing conversion (no column). `Decode`: column-scoped row decode failure: missing column, overflow (`u64` > `i64::MAX`), NULL into non-`Option`, unknown DB type. `NotFound`: `fetch_one`/`find` with no rows. `Driver`: the original driver error (e.g. `tokio_postgres::Error`, pool errors) passed through untouched; users downcast for SQLSTATE/timeout/pool info.
 - **Executor** is implemented by pool, connection and transaction, so AR methods take `&impl Executor`.
 
 ## Data flow
@@ -222,7 +230,7 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 4. `row.rs`.
 5. `column.rs`, `ast/expr.rs`, `ast/order.rs`.
 6. `query/*` builders incl. `.all()` typestate, validation, `raw.rs`.
-7. `driver.rs` and `entity.rs` traits (no impls).
+7. `driver/` (driver, executor, connection, transaction) and `entity.rs` traits (no impls).
 8. Unit tests for builders/values.
 
 **feature/sql-render**
@@ -258,6 +266,7 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 
 ## Edge cases for Hunter Flux
 **Identifiers / injection**
+- **Dynamic column names** (`Column::dynamic`, `Column::dynamic_qualified`): runtime names are always quoted by the dialect and never split on `.`; an empty name or table, or a name containing a NUL byte, returns `InvalidQuery`; names with embedded quotes are escaped by doubling them; `users.name` and a bare `name` still count as the same column in `duplicate_column`.
 - Names with `"`, `;`, `--`, spaces, backslashes, NUL byte (must be rejected), empty name (reject), reserved words (`user`, `order`, `select`).
 - `Expr::raw` / `query_raw`: params always bound; placeholder count vs params mismatch → `InvalidQuery`.
 - `col("users.age")`: treated as one identifier, not split (document); qualified names only via explicit API.
