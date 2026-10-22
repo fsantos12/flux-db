@@ -6,8 +6,8 @@ use std::marker::PhantomData;
 /// A reference to a column, optionally qualified by its table.
 ///
 /// Static names (literals, derive output) are borrowed and never allocate;
-/// names known only at runtime are owned, through [`Column::dynamic`] and
-/// [`Column::dynamic_qualified`].
+/// names known only at runtime are owned, through [`Column::string`] and
+/// [`Column::string_qualified`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Column {
     table: Option<Cow<'static, str>>,
@@ -34,7 +34,7 @@ impl Column {
     }
 
     /// Creates an unqualified column whose name is only known at runtime.
-    pub fn dynamic(name: impl Into<Cow<'static, str>>) -> Self {
+    pub fn string(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             table: None,
             name: name.into(),
@@ -42,7 +42,7 @@ impl Column {
     }
 
     /// Creates a qualified column whose names are only known at runtime.
-    pub fn dynamic_qualified(
+    pub fn string_qualified(
         table: impl Into<Cow<'static, str>>,
         name: impl Into<Cow<'static, str>>,
     ) -> Self {

@@ -266,7 +266,7 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 
 ## Edge cases for Hunter Flux
 **Identifiers / injection**
-- **Dynamic column names** (`Column::dynamic`, `Column::dynamic_qualified`): runtime names are always quoted by the dialect and never split on `.`; an empty name or table, or a name containing a NUL byte, returns `InvalidQuery`; names with embedded quotes are escaped by doubling them; `users.name` and a bare `name` still count as the same column in `duplicate_column`.
+- **Dynamic column names** (`Column::string`, `Column::string_qualified`): runtime names are always quoted by the dialect and never split on `.`; an empty name or table, or a name containing a NUL byte, returns `InvalidQuery`; names with embedded quotes are escaped by doubling them; `users.name` and a bare `name` still count as the same column in `duplicate_column`.
 - Names with `"`, `;`, `--`, spaces, backslashes, NUL byte (must be rejected), empty name (reject), reserved words (`user`, `order`, `select`).
 - `Expr::raw` / `query_raw`: params always bound; placeholder count vs params mismatch → `InvalidQuery`.
 - `col("users.age")`: treated as one identifier, not split (document); qualified names only via explicit API.
