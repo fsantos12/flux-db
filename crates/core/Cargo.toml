@@ -20,4 +20,3 @@ uuid         = { workspace = true }
 
 # --- Collections ---
 smallvec = { workspace = true }
-smol_str = { workspace = true }

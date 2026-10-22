@@ -23,7 +23,6 @@ uuid         = { version = "1.23.1", features = ["v7", "serde"] }
 
 # --- Collections ---
 smallvec = "1.11"
-smol_str = "0.3"
 
 # --- Async & Runtime ---
 async-trait = "0.1"
