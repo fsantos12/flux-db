@@ -25,5 +25,6 @@ uuid         = { version = "1.23.1", features = ["v7", "serde"] }
 smallvec = "1.11"
 
 # --- Async & Runtime ---
-async-trait = "0.1"
-futures     = "0.3"
+async-trait  = "0.1"
+futures      = "0.3"
+futures-core = "0.3.34"

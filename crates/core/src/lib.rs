@@ -3,5 +3,6 @@
 //! This crate is database-agnostic; drivers and SQL rendering live in other crates.
 
 pub mod ast;
+pub mod driver;
 pub mod query;
 pub mod types;
