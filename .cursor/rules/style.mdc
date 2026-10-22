@@ -39,6 +39,7 @@ Baseline: no rustfmt.toml, clippy.toml, [lints] or CI exist yet. These rules fol
 ## Error Handling
 - Library code never panics on recoverable conditions: no `unwrap`/`expect` outside tests, examples and proven invariants (document the invariant in the `expect` message).
 - Return `Result<T, flux_db_core::Error>` (the single `#[non_exhaustive]` enum defined in `architecture.mdc`); do not add new error types or variants without an architecture change. Use `?` for propagation.
+- Pick the right variant: `Conversion { expected, received }` for a `FromValue` type mismatch or lossy/narrowing conversion (no column); `Decode { column, message }` for a column-scoped row failure. Only lossless numeric widening converts silently (e.g. `I8` to `i64`, `F32` to `f64`); never use `as` casts that can truncate.
 - Error messages are lowercase, without trailing punctuation, and describe what failed.
 - Do not erase error context: pass driver errors through untouched in `Error::Driver` instead of stringifying them.
 
