@@ -1,8 +1,23 @@
-use crate::{column::Column, value::{IntoValue, Value}};
+//! Expression tree for filters and projections.
+//!
+//! Core only describes *what* was asked; `flux-db-sql-render` (and future
+//! non-SQL backends) decide how to express it.
 
+use crate::column::{Column, TypedColumn};
+use crate::value::{IntoValue, Value};
+
+/// Binary comparison operators.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BinaryOp { Eq, Ne, Lt, Le, Gt, Ge }
+pub enum BinaryOp {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
 
+/// A LIKE pattern. The dialect escapes the text, except for [`LikePattern::Raw`].
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum LikePattern {
@@ -204,3 +219,139 @@ impl From<Value> for Expr {
         Self::Value(value)
     }
 }
+
+impl From<Column> for Expr {
+    fn from(column: Column) -> Self {
+        Self::Column(column)
+    }
+}
+
+impl<E, T> From<TypedColumn<E, T>> for Expr {
+    fn from(column: TypedColumn<E, T>) -> Self {
+        Self::Column(column.column())
+    }
+}
+
+// --- Typed column helpers ---
+
+/// Helpers available on every typed column, regardless of `T`.
+impl<E, T> TypedColumn<E, T> {
+    fn boxed(self) -> Box<Expr> {
+        Box::new(Expr::Column(self.column()))
+    }
+}
+
+/// Typed comparisons: values must match the column's Rust type `T`.
+impl<E, T: IntoValue> TypedColumn<E, T> {
+    /// `col = value`.
+    pub fn eq(self, value: T) -> Expr {
+        self.binary(BinaryOp::Eq, value)
+    }
+
+    /// `col <> value`.
+    pub fn ne(self, value: T) -> Expr {
+        self.binary(BinaryOp::Ne, value)
+    }
+
+    /// `col < value`.
+    pub fn lt(self, value: T) -> Expr {
+        self.binary(BinaryOp::Lt, value)
+    }
+
+    /// `col <= value`.
+    pub fn le(self, value: T) -> Expr {
+        self.binary(BinaryOp::Le, value)
+    }
+
+    /// `col > value`.
+    pub fn gt(self, value: T) -> Expr {
+        self.binary(BinaryOp::Gt, value)
+    }
+
+    /// `col >= value`.
+    pub fn ge(self, value: T) -> Expr {
+        self.binary(BinaryOp::Ge, value)
+    }
+
+    /// `col IN (...)`. An empty list is rendered as always-false.
+    pub fn is_in(self, values: impl IntoIterator<Item = T>) -> Expr {
+        Expr::In { expr: self.boxed(), list: Self::values(values) }
+    }
+
+    /// `col NOT IN (...)`. An empty list is rendered as always-true.
+    pub fn not_in(self, values: impl IntoIterator<Item = T>) -> Expr {
+        Expr::NotIn { expr: self.boxed(), list: Self::values(values) }
+    }
+
+    /// `col BETWEEN low AND high` (inclusive on both ends).
+    pub fn between(self, low: T, high: T) -> Expr {
+        Expr::Between {
+            expr: self.boxed(),
+            low: Box::new(Expr::value(low)),
+            high: Box::new(Expr::value(high)),
+        }
+    }
+
+    /// `col NOT BETWEEN low AND high`.
+    pub fn not_between(self, low: T, high: T) -> Expr {
+        Expr::NotBetween {
+            expr: self.boxed(),
+            low: Box::new(Expr::value(low)),
+            high: Box::new(Expr::value(high)),
+        }
+    }
+
+    fn binary(self, op: BinaryOp, value: T) -> Expr {
+        Expr::Binary { left: self.boxed(), op, right: Box::new(Expr::value(value)) }
+    }
+
+    fn values(values: impl IntoIterator<Item = T>) -> Vec<Expr> {
+        values.into_iter().map(Expr::value).collect()
+    }
+}
+
+/// `IS NULL` only exists on nullable columns.
+impl<E, T> TypedColumn<E, Option<T>> {
+    /// `col IS NULL`.
+    pub fn is_null(self) -> Expr {
+        Expr::IsNull(self.boxed())
+    }
+
+    /// `col IS NOT NULL`.
+    pub fn is_not_null(self) -> Expr {
+        Expr::IsNotNull(self.boxed())
+    }
+}
+
+/// LIKE helpers only exist on text columns.
+impl<E> TypedColumn<E, String> {
+    /// Matches values containing `text` literally.
+    pub fn contains(self, text: impl Into<String>) -> Expr {
+        self.like_pattern(LikePattern::Contains(text.into()))
+    }
+
+    /// Matches values starting with `text` literally.
+    pub fn starts_with(self, text: impl Into<String>) -> Expr {
+        self.like_pattern(LikePattern::StartsWith(text.into()))
+    }
+
+    /// Matches values ending with `text` literally.
+    pub fn ends_with(self, text: impl Into<String>) -> Expr {
+        self.like_pattern(LikePattern::EndsWith(text.into()))
+    }
+
+    /// Raw pattern: `%` and `_` are wildcards, taken as-is.
+    pub fn like(self, pattern: impl Into<String>) -> Expr {
+        self.like_pattern(LikePattern::Raw(pattern.into()))
+    }
+
+    /// `NOT LIKE` with a raw pattern.
+    pub fn not_like(self, pattern: impl Into<String>) -> Expr {
+        Expr::NotLike { expr: self.boxed(), pattern: LikePattern::Raw(pattern.into()) }
+    }
+
+    fn like_pattern(self, pattern: LikePattern) -> Expr {
+        Expr::Like { expr: self.boxed(), pattern }
+    }
+}
+
