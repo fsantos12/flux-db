@@ -13,7 +13,9 @@ pub enum Error {
     /// Query rejected before it reaches the database
     /// (empty insert, unfiltered write, bad identifier, too many params...).
     InvalidQuery(String),
-    /// Row or value conversion failed (missing column, type mismatch, overflow, NULL into non-Option).
+    /// Value type mismatch during conversion (e.g. [`FromValue`](crate::value::FromValue)).
+    Conversion { expected: &'static str, received: &'static str },
+    /// Row decode failed (missing column, NULL into non-Option, unknown DB type...).
     Decode { column: String, message: String },
     /// `fetch_one` / `find` returned no rows.
     NotFound,
@@ -27,19 +29,15 @@ impl Error {
         Self::InvalidQuery(message.into())
     }
 
+    /// Creates a [`Conversion`](Error::Conversion) error.
+    pub fn conversion(expected: &'static str, received: &'static str) -> Self {
+        Self::Conversion { expected, received }
+    }
+
     /// Creates a [`Decode`](Error::Decode) error for a named column.
     pub fn decode(column: impl Into<String>, message: impl Into<String>) -> Self {
         Self::Decode {
             column: column.into(),
-            message: message.into(),
-        }
-    }
-
-    /// Creates a [`Decode`](Error::Decode) error with no column context
-    /// (e.g. standalone [`Value`](crate::value::Value) conversion).
-    pub fn conversion(message: impl Into<String>) -> Self {
-        Self::Decode {
-            column: String::new(),
             message: message.into(),
         }
     }
@@ -59,8 +57,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidQuery(message) => write!(f, "invalid query: {message}"),
-            Self::Decode { column, message } if column.is_empty() => {
-                write!(f, "decode error: {message}")
+            Self::Conversion { expected, received } => {
+                write!(f, "type conversion failed: expected `{expected}`, received `{received}`")
             }
             Self::Decode { column, message } => {
                 write!(f, "decode error in column `{column}`: {message}")
