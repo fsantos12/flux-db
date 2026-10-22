@@ -209,7 +209,8 @@ impl Expr {
 
     // --- Functions ---
 
-    /// The database's current timestamp.
+    /// The database's current timestamp, rendered by each dialect
+    /// (e.g. `CURRENT_TIMESTAMP` or `NOW()`).
     pub const fn now() -> Self {
         Self::Now
     }
@@ -220,6 +221,22 @@ impl Expr {
     }
 
     /// Calls a portable function with the given arguments.
+    ///
+    /// The argument count is not checked here; the renderer rejects calls a
+    /// function cannot take.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use flux_db_core::ast::expr::{Expr, Func};
+    /// use flux_db_core::column::TypedColumn;
+    ///
+    /// struct User;
+    /// const NAME: TypedColumn<User, String> = TypedColumn::new("users", "name");
+    ///
+    /// // The shortcut and the generic form build the same node.
+    /// assert_eq!(NAME.lower(), Expr::func(Func::Lower, [NAME]));
+    /// ```
     pub fn func<I>(func: Func, args: I) -> Self
     where
         I: IntoIterator,

@@ -2,6 +2,23 @@
 //!
 //! Every row is built with [`InsertRow`]; all rows must set the same columns
 //! in the same order. Checked by [`Insert::validate`].
+//!
+//! # Examples
+//!
+//! ```
+//! use flux_db_core::ast::expr::Expr;
+//! use flux_db_core::column::TypedColumn;
+//! use flux_db_core::query::insert::{Insert, InsertRow};
+//!
+//! struct User;
+//! const NAME: TypedColumn<User, String> = TypedColumn::new("users", "name");
+//! const CREATED: TypedColumn<User, i64> = TypedColumn::new("users", "created_at");
+//!
+//! let row = |name: &str| InsertRow::new().set_value(NAME, name.to_owned()).set(CREATED, Expr::now());
+//! let query = Insert::into("users").rows([row("ann"), row("bob")]);
+//! assert!(query.validate().is_ok());
+//! assert_eq!(query.columns().len(), 2);
+//! ```
 
 use crate::ast::expr::Expr;
 use crate::column::{Column, TypedColumn};
@@ -80,15 +97,30 @@ impl Insert {
         self.rows.first().map_or(&[], |row| &row.columns)
     }
 
-    /// Fails with [`Error::InvalidQuery`] on an empty insert or mismatched rows.
+    /// Checks that the insert can be rendered.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidQuery`] when there are no rows, the first row
+    /// sets no columns, or a row sets different columns than row 0.
     pub fn validate(&self) -> Result<()> {
         let Some(first) = self.rows.first() else {
-            return Err(Error::invalid_query(format!("INSERT INTO {} has no rows", self.table)));
+            return Err(Error::invalid_query(format!(
+                "INSERT INTO {} has no rows",
+                self.table
+            )));
         };
         if first.columns.is_empty() {
-            return Err(Error::invalid_query(format!("INSERT INTO {} has no columns", self.table)));
+            return Err(Error::invalid_query(format!(
+                "INSERT INTO {} has no columns",
+                self.table
+            )));
         }
-        if let Some(index) = self.rows.iter().position(|row| row.columns != first.columns) {
+        if let Some(index) = self
+            .rows
+            .iter()
+            .position(|row| row.columns != first.columns)
+        {
             return Err(Error::invalid_query(format!(
                 "INSERT INTO {}: row {index} sets different columns than row 0",
                 self.table

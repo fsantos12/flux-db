@@ -3,13 +3,28 @@
 //! Same typestate as [`Delete`](crate::query::delete::Delete): executable only
 //! after `.filter(...)` or `.all()`. At least one assignment is checked by
 //! [`Update::validate`] when the update is turned into a query.
+//!
+//! # Examples
+//!
+//! ```
+//! use flux_db_core::column::TypedColumn;
+//! use flux_db_core::query::update::Update;
+//!
+//! struct User;
+//! const ID: TypedColumn<User, i64> = TypedColumn::new("users", "id");
+//! const NAME: TypedColumn<User, String> = TypedColumn::new("users", "name");
+//!
+//! // UPDATE users SET name = 'ann' WHERE users.id = 1
+//! let query = Update::table("users").set_value(NAME, "ann".to_owned()).filter(ID.eq(1));
+//! assert!(query.validate().is_ok());
+//! ```
 
 use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
 use crate::column::{Column, TypedColumn};
 use crate::error::{Error, Result};
-use crate::query::state::{All, Filtered, Unfiltered};
+use crate::query::state::{All, Executable, Filtered, Unfiltered};
 use crate::value::IntoValue;
 
 /// One `column = value` assignment in a `SET` clause.
@@ -61,14 +76,7 @@ impl Update<Unfiltered> {
     }
 }
 
-impl Update<Filtered> {
-    /// Adds another filter, combined with `AND`.
-    pub fn filter(mut self, expr: impl Into<Expr>) -> Self {
-        let expr = expr.into();
-        self.filter = self.filter.take().map(|existing| existing.and(expr));
-        self
-    }
-
+impl<S: Executable> Update<S> {
     /// Adds a `RETURNING` column or expression.
     pub fn returning(mut self, expr: impl Into<Expr>) -> Self {
         self.returning.push(expr.into());
@@ -76,10 +84,11 @@ impl Update<Filtered> {
     }
 }
 
-impl Update<All> {
-    /// Adds a `RETURNING` column or expression.
-    pub fn returning(mut self, expr: impl Into<Expr>) -> Self {
-        self.returning.push(expr.into());
+impl Update<Filtered> {
+    /// Adds another filter, combined with `AND`.
+    pub fn filter(mut self, expr: impl Into<Expr>) -> Self {
+        let expr = expr.into();
+        self.filter = self.filter.take().map(|existing| existing.and(expr));
         self
     }
 }
@@ -99,7 +108,11 @@ impl<S> Update<S> {
         self
     }
 
-    /// Fails with [`Error::InvalidQuery`] when there is nothing to set.
+    /// Checks that the update can be rendered.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidQuery`] when there are no `SET` assignments.
     pub fn validate(&self) -> Result<()> {
         if self.assignments.is_empty() {
             return Err(Error::invalid_query(format!(
