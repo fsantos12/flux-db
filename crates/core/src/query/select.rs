@@ -19,6 +19,8 @@
 //! assert_eq!(query.limit, Some(10));
 //! ```
 
+use std::borrow::Cow;
+
 use crate::ast::expr::Expr;
 use crate::ast::order::OrderBy;
 
@@ -26,7 +28,7 @@ use crate::ast::order::OrderBy;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Select {
     /// Source table.
-    pub table: &'static str,
+    pub table: Cow<'static, str>,
     /// Projected columns or expressions; empty means `*`.
     pub columns: Vec<Expr>,
     /// `WHERE` clause, if any.
@@ -41,9 +43,9 @@ pub struct Select {
 
 impl Select {
     /// Starts a `SELECT * FROM table`.
-    pub fn from(table: &'static str) -> Self {
+    pub fn from(table: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            table,
+            table: table.into(),
             columns: Vec::new(),
             filter: None,
             order: Vec::new(),

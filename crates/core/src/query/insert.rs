@@ -20,6 +20,8 @@
 //! assert_eq!(query.columns().len(), 2);
 //! ```
 
+use std::borrow::Cow;
+
 use crate::ast::expr::Expr;
 use crate::query::duplicate_column;
 use crate::types::column::{Column, TypedColumn};
@@ -68,7 +70,7 @@ impl InsertRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Insert {
     /// Target table.
-    pub table: &'static str,
+    pub table: Cow<'static, str>,
     /// Rows to insert, in order.
     pub rows: Vec<InsertRow>,
     /// `RETURNING` columns or expressions.
@@ -77,9 +79,9 @@ pub struct Insert {
 
 impl Insert {
     /// Starts an `INSERT INTO table`.
-    pub fn into(table: &'static str) -> Self {
+    pub fn into(table: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            table,
+            table: table.into(),
             rows: Vec::new(),
             returning: Vec::new(),
         }

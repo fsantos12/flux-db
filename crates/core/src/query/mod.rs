@@ -12,6 +12,8 @@ pub mod select;
 pub mod state;
 pub mod update;
 
+use std::borrow::Cow;
+
 use crate::ast::expr::Expr;
 use crate::types::column::Column;
 use crate::types::error::Result;
@@ -46,7 +48,7 @@ pub enum Query {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UpdateQuery {
     /// Target table.
-    pub table: &'static str,
+    pub table: Cow<'static, str>,
     /// `SET` assignments, in call order.
     pub assignments: Vec<Assignment>,
     /// `WHERE` clause; `None` means every row (`.all()`).
@@ -59,7 +61,7 @@ pub struct UpdateQuery {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeleteQuery {
     /// Target table.
-    pub table: &'static str,
+    pub table: Cow<'static, str>,
     /// `WHERE` clause; `None` means every row (`.all()`).
     pub filter: Option<Expr>,
     /// `RETURNING` columns or expressions.

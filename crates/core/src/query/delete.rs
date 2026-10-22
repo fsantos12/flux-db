@@ -27,6 +27,7 @@
 //! let _ = Delete::from("users").returning(flux_db_core::ast::expr::Expr::count_all());
 //! ```
 
+use std::borrow::Cow;
 use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
@@ -36,7 +37,7 @@ use crate::query::state::{All, Executable, Filtered, Unfiltered};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Delete<S = Unfiltered> {
     /// Target table.
-    pub table: &'static str,
+    pub table: Cow<'static, str>,
     /// `WHERE` clause; `None` only in the `Unfiltered` and `All` states.
     pub filter: Option<Expr>,
     /// `RETURNING` columns or expressions.
@@ -58,9 +59,9 @@ impl<S> Delete<S> {
 
 impl Delete<Unfiltered> {
     /// Starts a `DELETE FROM table`. Not executable until filtered or `.all()`.
-    pub fn from(table: &'static str) -> Self {
+    pub fn from(table: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            table,
+            table: table.into(),
             filter: None,
             returning: Vec::new(),
             _state: PhantomData,

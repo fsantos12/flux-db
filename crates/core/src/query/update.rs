@@ -19,6 +19,7 @@
 //! assert!(query.validate().is_ok());
 //! ```
 
+use std::borrow::Cow;
 use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
@@ -41,7 +42,7 @@ pub struct Assignment {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Update<S = Unfiltered> {
     /// Target table.
-    pub table: &'static str,
+    pub table: Cow<'static, str>,
     /// `SET` assignments, in call order.
     pub assignments: Vec<Assignment>,
     /// `WHERE` clause; `None` only in the `Unfiltered` and `All` states.
@@ -53,9 +54,9 @@ pub struct Update<S = Unfiltered> {
 
 impl Update<Unfiltered> {
     /// Starts an `UPDATE table`. Not executable until filtered or `.all()`.
-    pub fn table(table: &'static str) -> Self {
+    pub fn table(table: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            table,
+            table: table.into(),
             assignments: Vec::new(),
             filter: None,
             returning: Vec::new(),
