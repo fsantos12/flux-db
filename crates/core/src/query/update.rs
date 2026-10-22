@@ -113,7 +113,8 @@ impl<S> Update<S> {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::InvalidQuery`] when there are no `SET` assignments.
+    /// Returns [`Error::InvalidQuery`] when there are no `SET` assignments
+    /// or the same column is assigned more than once (compared by name).
     pub fn validate(&self) -> Result<()> {
         if self.assignments.is_empty() {
             return Err(Error::invalid_query(format!(

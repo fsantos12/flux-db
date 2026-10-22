@@ -27,9 +27,9 @@ use crate::query::duplicate_column;
 use crate::value::IntoValue;
 
 /// One row of values for an [`Insert`].
-#[derive(Debug, Clone, PartialEq, Default)]
 ///
 /// Fields are private so `columns` and `values` always have the same length.
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct InsertRow {
     columns: Vec<Column>,
     values: Vec<Expr>,
