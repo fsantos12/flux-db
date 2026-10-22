@@ -1,6 +1,8 @@
-//! Core types for flux-db: values, columns, rows, the query AST and query builders.
+//! Core of flux-db: shared [`types`], the query [`ast`], query builders in
+//! [`query`] and the [`driver`] traits.
 //!
-//! This crate is database-agnostic; drivers and SQL rendering live in other crates.
+//! This crate is database-agnostic; driver implementations and SQL rendering
+//! live in other crates.
 
 pub mod ast;
 pub mod driver;

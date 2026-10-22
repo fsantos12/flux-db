@@ -115,6 +115,8 @@ impl<S: Executable> IntoQuery for Update<S> {
 }
 
 impl<S: Executable> IntoQuery for Delete<S> {
+    // No `validate()` here: a `DELETE` has nothing to check beyond its
+    // typestate, and the `Executable` bound already rules out `Unfiltered`.
     fn into_query(self) -> Result<Query> {
         Ok(Query::Delete(DeleteQuery {
             table: self.table,

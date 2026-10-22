@@ -9,7 +9,7 @@ use crate::ast::expr::Expr;
 /// ```
 /// use flux_db_core::ast::expr::Expr;
 /// use flux_db_core::ast::group::GroupBy;
-/// use flux_db_core::column::TypedColumn;
+/// use flux_db_core::types::column::TypedColumn;
 ///
 /// struct User;
 /// const CITY: TypedColumn<User, String> = TypedColumn::new("users", "city");

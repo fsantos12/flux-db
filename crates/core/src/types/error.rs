@@ -15,11 +15,11 @@ pub enum Error {
     /// Query rejected before it reaches the database
     /// (empty insert, unfiltered write, bad identifier, too many params...).
     InvalidQuery(String),
-    /// Value type mismatch during conversion (e.g. [`FromValue`](crate::value::FromValue)).
+    /// Value type mismatch during conversion (e.g. [`FromValue`](crate::types::value::FromValue)).
     Conversion {
         /// Name of the Rust type that was requested.
         expected: &'static str,
-        /// [`Value::type_name`](crate::value::Value::type_name) of the value received.
+        /// [`Value::type_name`](crate::types::value::Value::type_name) of the value received.
         received: &'static str,
     },
     /// Row decode failed (missing column, NULL into non-Option, unknown DB type...).
@@ -64,7 +64,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
-    /// use flux_db_core::error::Error;
+    /// use flux_db_core::types::error::Error;
     ///
     /// assert!(Error::NotFound.is_not_found());
     /// assert!(!Error::invalid_query("empty insert").is_not_found());

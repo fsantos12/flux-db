@@ -51,7 +51,7 @@ impl<E, T> From<TypedColumn<E, T>> for Column {
 /// # Examples
 ///
 /// ```
-/// use flux_db_core::column::TypedColumn;
+/// use flux_db_core::types::column::TypedColumn;
 ///
 /// struct User;
 /// const AGE: TypedColumn<User, i32> = TypedColumn::new("users", "age");

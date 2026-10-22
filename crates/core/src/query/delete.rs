@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use flux_db_core::column::TypedColumn;
+//! use flux_db_core::types::column::TypedColumn;
 //! use flux_db_core::query::delete::Delete;
 //!
 //! struct User;

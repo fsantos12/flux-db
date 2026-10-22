@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use flux_db_core::column::TypedColumn;
+//! use flux_db_core::types::column::TypedColumn;
 //! use flux_db_core::query::update::Update;
 //!
 //! struct User;
@@ -22,10 +22,10 @@
 use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
-use crate::types::column::{Column, TypedColumn};
-use crate::types::error::{Error, Result};
 use crate::query::duplicate_column;
 use crate::query::state::{All, Executable, Filtered, Unfiltered};
+use crate::types::column::{Column, TypedColumn};
+use crate::types::error::{Error, Result};
 use crate::types::value::IntoValue;
 
 /// One `column = value` assignment in a `SET` clause.

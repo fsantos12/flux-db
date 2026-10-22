@@ -4,7 +4,7 @@
 //!
 //! ```
 //! use flux_db_core::ast::order::{Direction, NullsOrder};
-//! use flux_db_core::column::TypedColumn;
+//! use flux_db_core::types::column::TypedColumn;
 //!
 //! struct User;
 //! const AGE: TypedColumn<User, Option<i32>> = TypedColumn::new("users", "age");

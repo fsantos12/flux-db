@@ -12,7 +12,7 @@ use crate::types::value::{IntoValue, Value};
 ///
 /// ```
 /// use flux_db_core::query::raw::RawQuery;
-/// use flux_db_core::value::Value;
+/// use flux_db_core::types::value::Value;
 ///
 /// let query = RawQuery::new("SELECT * FROM users WHERE id = $1 OR id = $2").bind_all([1_i64, 2]);
 /// assert_eq!(query.params, vec![Value::I64(1), Value::I64(2)]);

@@ -12,5 +12,10 @@ pub trait Driver: Executor + 'static {
     type Connection: Connection;
 
     /// Checks out a connection (waits on the pool if needed).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Driver`](crate::types::error::Error::Driver) when no
+    /// connection can be opened or the pool times out.
     fn acquire(&self) -> impl Future<Output = Result<Self::Connection>> + Send;
 }

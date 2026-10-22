@@ -10,7 +10,7 @@
 //!
 //! ```
 //! use flux_db_core::ast::expr::Expr;
-//! use flux_db_core::column::TypedColumn;
+//! use flux_db_core::types::column::TypedColumn;
 //!
 //! struct User;
 //! const AGE: TypedColumn<User, i32> = TypedColumn::new("users", "age");
@@ -195,7 +195,7 @@ impl Expr {
     ///
     /// ```
     /// use flux_db_core::ast::expr::Expr;
-    /// use flux_db_core::value::Value;
+    /// use flux_db_core::types::value::Value;
     ///
     /// let expr = Expr::raw("age > ?", vec![Value::I32(18)]);
     /// assert!(matches!(expr, Expr::Raw { ref params, .. } if params.len() == 1));
@@ -229,7 +229,7 @@ impl Expr {
     ///
     /// ```
     /// use flux_db_core::ast::expr::{Expr, Func};
-    /// use flux_db_core::column::TypedColumn;
+    /// use flux_db_core::types::column::TypedColumn;
     ///
     /// struct User;
     /// const NAME: TypedColumn<User, String> = TypedColumn::new("users", "name");
@@ -494,8 +494,8 @@ impl<E, T> From<TypedColumn<E, T>> for Expr {
 ///
 /// ```
 /// use flux_db_core::ast::expr::{BinaryOp, Expr};
-/// use flux_db_core::column::TypedColumn;
-/// use flux_db_core::value::Value;
+/// use flux_db_core::types::column::TypedColumn;
+/// use flux_db_core::types::value::Value;
 ///
 /// struct User;
 /// const AGE: TypedColumn<User, i32> = TypedColumn::new("users", "age");

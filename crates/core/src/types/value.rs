@@ -8,7 +8,7 @@
 //! # Examples
 //!
 //! ```
-//! use flux_db_core::value::{FromValue, IntoValue, Value};
+//! use flux_db_core::types::value::{FromValue, IntoValue, Value};
 //!
 //! let value = 7_i8.into_value();
 //! assert_eq!(value, Value::I8(7));
@@ -64,7 +64,7 @@ macro_rules! define_value {
             /// # Examples
             ///
             /// ```
-            /// use flux_db_core::value::Value;
+            /// use flux_db_core::types::value::Value;
             ///
             /// assert_eq!(Value::Null.type_name(), "null");
             /// assert_eq!(Value::Bool(true).type_name(), "bool");
