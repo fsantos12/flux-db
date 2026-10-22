@@ -132,10 +132,10 @@ impl<S: Executable> IntoQuery for Delete<S> {
 /// column. A linear scan beats hashing at real row widths.
 pub(crate) fn duplicate_column<'a>(
     columns: impl IntoIterator<Item = &'a Column>,
-) -> Option<&'static str> {
+) -> Option<&'a str> {
     // Intentionally a linear Vec scan: column counts are small, so this beats
     // a HashSet in practice despite being O(n^2).
-    let mut seen: Vec<&'static str> = Vec::new();
+    let mut seen: Vec<&'a str> = Vec::new();
     columns.into_iter().map(Column::name).find(|name| {
         let duplicate = seen.contains(name);
         seen.push(name);
