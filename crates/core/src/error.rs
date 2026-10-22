@@ -1,9 +1,11 @@
 //! Database errors.
+//!
+//! flux-db uses a single [`Error`] enum across all crates so callers match on one type.
 
 use std::error::Error as StdError;
 use std::fmt;
 
-/// Result type for flux-db operations.
+/// Result type for flux-db operations, using [`Error`].
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A database error.
@@ -14,9 +16,19 @@ pub enum Error {
     /// (empty insert, unfiltered write, bad identifier, too many params...).
     InvalidQuery(String),
     /// Value type mismatch during conversion (e.g. [`FromValue`](crate::value::FromValue)).
-    Conversion { expected: &'static str, received: &'static str },
+    Conversion {
+        /// Name of the Rust type that was requested.
+        expected: &'static str,
+        /// [`Value::type_name`](crate::value::Value::type_name) of the value received.
+        received: &'static str,
+    },
     /// Row decode failed (missing column, NULL into non-Option, unknown DB type...).
-    Decode { column: String, message: String },
+    Decode {
+        /// Name of the column that failed to decode.
+        column: String,
+        /// What went wrong.
+        message: String,
+    },
     /// `fetch_one` / `find` returned no rows.
     NotFound,
     /// Anything from the driver, passed through untouched.
@@ -48,6 +60,15 @@ impl Error {
     }
 
     /// Returns `true` if this is [`NotFound`](Error::NotFound).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use flux_db_core::error::Error;
+    ///
+    /// assert!(Error::NotFound.is_not_found());
+    /// assert!(!Error::invalid_query("empty insert").is_not_found());
+    /// ```
     pub fn is_not_found(&self) -> bool {
         matches!(self, Self::NotFound)
     }
@@ -58,13 +79,18 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidQuery(message) => write!(f, "invalid query: {message}"),
             Self::Conversion { expected, received } => {
-                write!(f, "type conversion failed: expected `{expected}`, received `{received}`")
+                write!(
+                    f,
+                    "type conversion failed: expected `{expected}`, received `{received}`"
+                )
             }
             Self::Decode { column, message } => {
                 write!(f, "decode error in column `{column}`: {message}")
             }
             Self::NotFound => write!(f, "record not found"),
-            Self::Driver(err) => write!(f, "driver error: {err}"),
+            // The driver message is exposed through `source()`; repeating it here
+            // would print it twice in error-chain reporters such as `anyhow`.
+            Self::Driver(_) => write!(f, "driver error"),
         }
     }
 }
