@@ -22,6 +22,7 @@
 use std::borrow::Cow;
 
 use crate::ast::expr::Expr;
+use crate::ast::group::GroupBy;
 use crate::ast::order::OrderBy;
 
 /// A `SELECT` query. An empty `columns` list renders as `SELECT *`.
@@ -35,6 +36,8 @@ pub struct Select {
     pub filter: Option<Expr>,
     /// `ORDER BY` terms, in call order.
     pub order: Vec<OrderBy>,
+    /// `GROUP BY` terms, in call order.
+    pub group: Option<GroupBy>,
     /// Maximum number of rows to return.
     pub limit: Option<u64>,
     /// Number of rows to skip.
@@ -49,6 +52,7 @@ impl Select {
             columns: Vec::new(),
             filter: None,
             order: Vec::new(),
+            group: None,
             limit: None,
             offset: None,
         }
@@ -83,6 +87,26 @@ impl Select {
     /// Adds an `ORDER BY` term. Repeated calls keep their order.
     pub fn order_by(mut self, order: OrderBy) -> Self {
         self.order.push(order);
+        self
+    }
+
+    /// Adds `GROUP BY` expressions. Repeated calls extend the list.
+    pub fn group_by<I>(mut self, exprs: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<Expr>,
+    {
+        self.group
+            .get_or_insert_with(GroupBy::default)
+            .exprs
+            .extend(exprs.into_iter().map(Into::into));
+        self
+    }
+
+    /// Adds a `HAVING` condition. Repeated calls are combined with `AND`.
+    pub fn having(mut self, condition: impl Into<Expr>) -> Self {
+        let group = self.group.take().unwrap_or_default();
+        self.group = Some(group.having(condition.into()));
         self
     }
 
