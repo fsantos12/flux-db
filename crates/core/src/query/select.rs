@@ -36,7 +36,7 @@ pub struct Select {
     pub filter: Option<Expr>,
     /// `ORDER BY` terms, in call order.
     pub order: Vec<OrderBy>,
-    /// `GROUP BY` terms, in call order.
+    /// `GROUP BY` terms in call order, plus the optional `HAVING` condition.
     pub group: Option<GroupBy>,
     /// Maximum number of rows to return.
     pub limit: Option<u64>,
