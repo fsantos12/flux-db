@@ -338,7 +338,7 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 ## Resolved decisions (2026-10-20)
 1. Raw SQL: small `query_raw` / `Expr::raw` in v1, bound params only.
 2. Primary keys: single-column only.
-3. Dates: chrono; `uuid`, `serde_json`, `rust_decimal` as optional features.
+3. Optional core features: `chrono` (default on), `uuid`, `serde_json`, `rust_decimal`; `full` enables all (fd9f744). Value variants and conversions for each sit behind their feature.
 4. `save()` inserts or updates by `Option`/generated PK; explicit `insert()` and `update()` also generated.
 5. `.all()` with a filter is prevented by typestate (fallback: `InvalidQuery` validation error if typestate proves impractical).
 6. No savepoints in v1.
