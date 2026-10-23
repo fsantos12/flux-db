@@ -35,11 +35,15 @@ pub trait Entity: FromRow + Send + Sync {
     const TABLE: &'static str;
     /// Primary key columns, in key order. Empty when the entity has no key.
     const PRIMARY_KEY: &'static [EntityColumnDef];
-    /// All columns, in field order.
+    /// All columns, in field order. [`Entity::values`] uses a different order
+    /// (keys first); INSERT names its columns, so the two orders never conflict.
     const COLUMNS: &'static [EntityColumnDef];
 
     /// Primary key column/value pairs, in [`Entity::PRIMARY_KEY`] order.
     /// Empty when the entity has no key.
+    ///
+    /// A hand-written impl must return every key column: [`Entity::own_key_filter`]
+    /// trusts this list, so a missing key widens the WHERE of update and delete.
     fn primary_key_values(&self) -> Vec<(Column, Value)>;
 
     /// Non-key column/value pairs, in field order (the SET list of an UPDATE).
