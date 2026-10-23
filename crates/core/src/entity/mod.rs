@@ -38,14 +38,39 @@ pub trait Entity: FromRow + Send + Sync {
     /// All columns, in field order.
     const COLUMNS: &'static [EntityColumnDef];
 
-    /// Column/value pairs for INSERT and UPDATE.
-    fn values(&self) -> Vec<(Column, Value)>;
-
-    /// Current primary key values, in [`Entity::PRIMARY_KEY`] order.
+    /// Primary key column/value pairs, in [`Entity::PRIMARY_KEY`] order.
     /// Empty when the entity has no key.
-    fn primary_key_values(&self) -> Vec<Value>;
+    fn primary_key_values(&self) -> Vec<(Column, Value)>;
 
-    /// `pk1 = $1 AND pk2 = $2 ...` for the given key values.
+    /// Non-key column/value pairs, in field order (the SET list of an UPDATE).
+    fn column_values(&self) -> Vec<(Column, Value)>;
+
+    /// All column/value pairs for an INSERT: keys first, then the other columns.
+    fn values(&self) -> Vec<(Column, Value)> {
+        let mut values = self.primary_key_values();
+        values.extend(self.column_values());
+        values
+    }
+
+    /// `pk1 = v1 AND pk2 = v2 ...` for this entity's own key (update, delete).
+    ///
+    /// Errors with [`Error::InvalidQuery`] when the entity has no key or a key
+    /// value is NULL.
+    fn own_key_filter(&self) -> Result<Expr> {
+        let keys = self.primary_key_values();
+        if keys.is_empty() {
+            return Err(Error::invalid_query(format!(
+                "entity `{}` has no primary key",
+                Self::TABLE
+            )));
+        }
+        keys.into_iter()
+            .map(|(column, value)| key_equals(column, value))
+            .collect::<Result<Vec<_>>>()
+            .map(Expr::all)
+    }
+
+    /// `pk1 = v1 AND pk2 = v2 ...` from bare key values (find).
     ///
     /// Errors with [`Error::InvalidQuery`] when the entity has no key, the
     /// number of values differs from [`Entity::PRIMARY_KEY`], or a value is NULL.
@@ -70,16 +95,19 @@ pub trait Entity: FromRow + Send + Sync {
         Self::PRIMARY_KEY
             .iter()
             .zip(values)
-            .map(|(def, value)| {
-                if matches!(value, Value::Null) {
-                    return Err(Error::invalid_query(format!(
-                        "primary key column `{}` cannot be NULL",
-                        def.name
-                    )));
-                }
-                Ok(Expr::from(def.column::<Self>()).equals(value))
-            })
+            .map(|(def, value)| key_equals(def.column::<Self>(), value))
             .collect::<Result<Vec<_>>>()
             .map(Expr::all)
     }
+}
+
+/// `column = value` for one key part; NULL is rejected because `= NULL` never matches.
+fn key_equals(column: Column, value: Value) -> Result<Expr> {
+    if matches!(value, Value::Null) {
+        return Err(Error::invalid_query(format!(
+            "primary key column `{}` cannot be NULL",
+            column.name()
+        )));
+    }
+    Ok(Expr::from(column).equals(value))
 }
