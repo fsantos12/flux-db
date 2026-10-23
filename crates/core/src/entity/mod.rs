@@ -2,7 +2,14 @@
 //!
 //! These traits are implemented by `#[derive(Entity)]`; core only defines them.
 
+use std::future::Future;
+
 use crate::ast::expr::Expr;
+use crate::driver::Executor;
+use crate::query::{
+    IntoQuery, Query, delete::Delete, insert::Insert, insert::InsertRow, select::Select,
+    update::Update,
+};
 use crate::types::{
     column::Column,
     error::{Error, Result},
@@ -109,6 +116,124 @@ pub trait Entity: FromRow + Send + Sync {
             .collect::<Result<Vec<_>>>()
             .map(Expr::all)
     }
+    /// `SELECT` of every column: [`Entity::PRIMARY_KEY`] first, then the
+    /// non-key [`Entity::COLUMNS`], matching the order of [`Entity::values`].
+    fn select() -> Select
+    where
+        Self: Sized,
+    {
+        let non_keys = Self::COLUMNS.iter().filter(|def| !def.primary_key);
+        Select::from(Self::TABLE).columns(
+            Self::PRIMARY_KEY
+                .iter()
+                .chain(non_keys)
+                .map(EntityColumnDef::column::<Self>),
+        )
+    }
+
+    /// Loads the row with the given primary key, or `None` when there is none.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidQuery`] for a bad key (see
+    /// [`Entity::primary_key_filter`]), or any error from the executor or
+    /// [`FromRow`].
+    fn find(
+        db: &impl Executor,
+        key: Vec<Value>,
+    ) -> impl Future<Output = Result<Option<Self>>> + Send
+    where
+        Self: Sized,
+    {
+        let query = Self::primary_key_filter(key)
+            .and_then(|filter| Self::select().filter(filter).limit(1).into_query());
+        async move {
+            let row = db.fetch_one_optional(&query?).await?;
+            row.map(|row| Self::from_row(&row)).transpose()
+        }
+    }
+
+    /// Loads every row of the table.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error from the executor or [`FromRow`].
+    fn all(db: &impl Executor) -> impl Future<Output = Result<Vec<Self>>> + Send
+    where
+        Self: Sized,
+    {
+        let query = Self::select().into_query();
+        async move {
+            db.fetch_all(&query?)
+                .await?
+                .iter()
+                .map(Self::from_row)
+                .collect()
+        }
+    }
+
+    /// Inserts this entity with [`Entity::values`]; returns the affected rows.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidQuery`] when the INSERT is invalid, or any
+    /// error from the executor.
+    fn insert(&self, db: &impl Executor) -> impl Future<Output = Result<u64>> + Send {
+        let row = self
+            .values()
+            .into_iter()
+            .fold(InsertRow::new(), |row, (column, value)| {
+                row.set(column, value)
+            });
+        let query = Insert::into(Self::TABLE).row(row).into_query();
+        run(db, query)
+    }
+
+    /// Updates the non-key columns of this entity's row; returns the affected rows.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidQuery`] when the entity has no non-key columns
+    /// or its key is invalid (see [`Entity::own_key_filter`]), or any error
+    /// from the executor.
+    fn update(&self, db: &impl Executor) -> impl Future<Output = Result<u64>> + Send {
+        let query = update_query(self);
+        run(db, query)
+    }
+
+    /// Deletes this entity's row; returns the affected rows.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidQuery`] when the key is invalid (see
+    /// [`Entity::own_key_filter`]), or any error from the executor.
+    fn delete(&self, db: &impl Executor) -> impl Future<Output = Result<u64>> + Send {
+        let query = self
+            .own_key_filter()
+            .and_then(|filter| Delete::from(Self::TABLE).filter(filter).into_query());
+        run(db, query)
+    }
+}
+
+/// The UPDATE behind [`Entity::update`].
+fn update_query<E: Entity>(entity: &E) -> Result<Query> {
+    let columns = entity.column_values();
+    if columns.is_empty() {
+        return Err(Error::invalid_query(format!(
+            "entity `{}` has no columns to update",
+            E::TABLE
+        )));
+    }
+    let update = Update::table(E::TABLE).filter(entity.own_key_filter()?);
+    columns
+        .into_iter()
+        .fold(update, |update, (column, value)| update.set(column, value))
+        .into_query()
+}
+
+/// Executes a prepared statement, passing a build error through the future.
+async fn run(db: &impl Executor, query: Result<Query>) -> Result<u64> {
+    db.execute(&query?).await
 }
 
 /// Error for a key-based operation on an entity without a primary key.
