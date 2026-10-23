@@ -58,12 +58,24 @@ pub trait Entity: FromRow + Send + Sync {
 
     /// `pk1 = v1 AND pk2 = v2 ...` for this entity's own key (update, delete).
     ///
-    /// Errors with [`Error::InvalidQuery`] when the entity has no key or a key
-    /// value is NULL.
+    /// Errors with [`Error::InvalidQuery`] when the entity has no key, a key
+    /// value is NULL, or [`Entity::primary_key_values`] does not match
+    /// [`Entity::PRIMARY_KEY`] in count and column names.
     fn own_key_filter(&self) -> Result<Expr> {
         let keys = self.primary_key_values();
         if keys.is_empty() {
             return Err(no_primary_key(Self::TABLE));
+        }
+        let matches_definition = keys.len() == Self::PRIMARY_KEY.len()
+            && keys
+                .iter()
+                .zip(Self::PRIMARY_KEY)
+                .all(|((column, _), def)| column.name() == def.name);
+        if !matches_definition {
+            return Err(Error::invalid_query(format!(
+                "entity `{}`: primary_key_values() does not match PRIMARY_KEY",
+                Self::TABLE
+            )));
         }
         keys.into_iter()
             .map(|(column, value)| key_equals(column, value))
