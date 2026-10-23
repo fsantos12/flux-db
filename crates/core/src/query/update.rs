@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
 use crate::query::duplicate_column;
-use crate::query::state::{All, Executable, Filtered, Unfiltered};
+use crate::query::state::{All, Executable, Filtered, NoReturning, Returning, Unfiltered};
 use crate::types::column::{Column, TypedColumn};
 use crate::types::error::{Error, Result};
 use crate::types::value::IntoValue;
@@ -39,8 +39,11 @@ pub struct Assignment {
 }
 
 /// An `UPDATE table SET ...` query in typestate `S`.
+///
+/// `R` is [`Returning`] once `.returning(...)` was called, which unlocks the
+/// fetch shortcuts.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Update<S = Unfiltered> {
+pub struct Update<S = Unfiltered, R = NoReturning> {
     /// Target table.
     pub table: Cow<'static, str>,
     /// `SET` assignments, in call order.
@@ -49,7 +52,7 @@ pub struct Update<S = Unfiltered> {
     pub filter: Option<Expr>,
     /// `RETURNING` columns or expressions.
     pub returning: Vec<Expr>,
-    _state: PhantomData<S>,
+    _state: PhantomData<(S, R)>,
 }
 
 impl Update<Unfiltered> {
@@ -78,15 +81,16 @@ impl Update<Unfiltered> {
     }
 }
 
-impl<S: Executable> Update<S> {
+impl<S: Executable, R> Update<S, R> {
     /// Adds a `RETURNING` column or expression.
-    pub fn returning(mut self, expr: impl Into<Expr>) -> Self {
-        self.returning.push(expr.into());
-        self
+    pub fn returning(self, expr: impl Into<Expr>) -> Update<S, Returning> {
+        let mut next = self.into_state();
+        next.returning.push(expr.into());
+        next
     }
 }
 
-impl Update<Filtered> {
+impl<R> Update<Filtered, R> {
     /// Adds another filter, combined with `AND`.
     pub fn filter(mut self, expr: impl Into<Expr>) -> Self {
         let expr = expr.into();
@@ -95,7 +99,7 @@ impl Update<Filtered> {
     }
 }
 
-impl<S> Update<S> {
+impl<S, R> Update<S, R> {
     /// `column = value`, typed: `value` must match the column's Rust type.
     pub fn set_value<E, T: IntoValue>(self, column: TypedColumn<E, T>, value: T) -> Self {
         self.set(column, Expr::value(value))
@@ -133,7 +137,7 @@ impl<S> Update<S> {
     }
 
     /// Moves the builder to another state, keeping its data.
-    fn into_state<T>(self) -> Update<T> {
+    fn into_state<T, Q>(self) -> Update<T, Q> {
         Update {
             table: self.table,
             assignments: self.assignments,
@@ -142,4 +146,12 @@ impl<S> Update<S> {
             _state: PhantomData,
         }
     }
+}
+
+impl<S: Executable, R> Update<S, R> {
+    crate::query::run::execute_shortcut!();
+}
+
+impl<S: Executable> Update<S, Returning> {
+    crate::query::run::fetch_shortcuts!();
 }

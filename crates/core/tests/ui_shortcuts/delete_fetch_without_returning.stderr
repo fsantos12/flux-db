@@ -1,0 +1,7 @@
+error[E0599]: no method named `fetch_one_optional` found for struct `flux_db_core::query::delete::Delete<All>` in the current scope
+ --> tests/ui_shortcuts/delete_fetch_without_returning.rs:9:37
+  |
+9 |     let _ = Delete::from("t").all().fetch_one_optional::<Row>(db);
+  |                                     ^^^^^^^^^^^^^^^^^^ method not found in `flux_db_core::query::delete::Delete<All>`
+  |
+  = note: the method was found for `flux_db_core::query::delete::Delete<S, Returning>`

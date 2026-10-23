@@ -6,8 +6,8 @@ error[E0599]: the method `into_query` exists for struct `flux_db_core::query::de
   |
  ::: src/query/delete.rs
   |
-  | pub struct Delete<S = Unfiltered> {
-  | --------------------------------- doesn't satisfy `flux_db_core::query::delete::Delete: IntoQuery`
+  | pub struct Delete<S = Unfiltered, R = NoReturning> {
+  | -------------------------------------------------- doesn't satisfy `flux_db_core::query::delete::Delete: IntoQuery`
   |
  ::: src/query/state.rs
   |

@@ -1,4 +1,4 @@
-//! Typestate markers shared by `UPDATE` and `DELETE`.
+//! Typestate markers shared by the write builders.
 //!
 //! A builder starts [`Unfiltered`] and becomes executable only once it is
 //! [`Filtered`] or explicitly targets [`All`] rows, so an accidental
@@ -15,6 +15,14 @@ pub struct Filtered;
 /// Explicitly targets every row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct All;
+
+/// No `RETURNING` yet: the write runs with `execute` only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NoReturning;
+
+/// Has `RETURNING`: the fetch shortcuts are available.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Returning;
 
 /// States in which an `UPDATE` or `DELETE` may be executed: [`Filtered`] and [`All`].
 ///

@@ -9,6 +9,13 @@ pub trait FromRow: Sized {
     fn from_row(row: &Row) -> Result<Self>;
 }
 
+/// The untyped row itself, so shortcuts can return plain [`Row`]s.
+impl FromRow for Row {
+    fn from_row(row: &Row) -> Result<Self> {
+        Ok(row.clone())
+    }
+}
+
 /// An ordered set of column names and their values.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Row {

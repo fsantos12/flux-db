@@ -31,23 +31,26 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
-use crate::query::state::{All, Executable, Filtered, Unfiltered};
+use crate::query::state::{All, Executable, Filtered, NoReturning, Returning, Unfiltered};
 
 /// A `DELETE FROM table` query in typestate `S`.
+///
+/// `R` is [`Returning`] once `.returning(...)` was called, which unlocks the
+/// fetch shortcuts.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Delete<S = Unfiltered> {
+pub struct Delete<S = Unfiltered, R = NoReturning> {
     /// Target table.
     pub table: Cow<'static, str>,
     /// `WHERE` clause; `None` only in the `Unfiltered` and `All` states.
     pub filter: Option<Expr>,
     /// `RETURNING` columns or expressions.
     pub returning: Vec<Expr>,
-    _state: PhantomData<S>,
+    _state: PhantomData<(S, R)>,
 }
 
-impl<S> Delete<S> {
+impl<S, R> Delete<S, R> {
     /// Moves the builder to another state, keeping its data.
-    fn into_state<T>(self) -> Delete<T> {
+    fn into_state<T, Q>(self) -> Delete<T, Q> {
         Delete {
             table: self.table,
             filter: self.filter,
@@ -82,19 +85,28 @@ impl Delete<Unfiltered> {
     }
 }
 
-impl<S: Executable> Delete<S> {
+impl<S: Executable, R> Delete<S, R> {
     /// Adds a `RETURNING` column or expression.
-    pub fn returning(mut self, expr: impl Into<Expr>) -> Self {
-        self.returning.push(expr.into());
-        self
+    pub fn returning(self, expr: impl Into<Expr>) -> Delete<S, Returning> {
+        let mut next = self.into_state();
+        next.returning.push(expr.into());
+        next
     }
 }
 
-impl Delete<Filtered> {
+impl<R> Delete<Filtered, R> {
     /// Adds another filter, combined with `AND`.
     pub fn filter(mut self, expr: impl Into<Expr>) -> Self {
         let expr = expr.into();
         self.filter = self.filter.take().map(|existing| existing.and(expr));
         self
     }
+}
+
+impl<S: Executable, R> Delete<S, R> {
+    crate::query::run::execute_shortcut!();
+}
+
+impl<S: Executable> Delete<S, Returning> {
+    crate::query::run::fetch_shortcuts!();
 }

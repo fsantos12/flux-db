@@ -23,6 +23,7 @@ Source of truth: Stormie Flux's blueprints, kept outside the repo in `/workspace
 - All values are bound parameters. Identifiers are always quoted by the dialect. LIKE patterns are a `LikePattern` enum; the dialect escapes Contains/StartsWith/EndsWith, only `Raw` passes through. Base types (Value, Row, Column, Error) live in `core/src/types/`; query AST data (Expr, OrderBy) lives in `core/src/ast/`, builders in `core/src/query/`, driver traits in `core/src/driver/` (traits only; impls live in driver crates). Raw SQL only via `query_raw` with bound params.
 - Errors, never panics, on bad input (`FromRow` returns `Result`, empty insert is an error, unfiltered UPDATE/DELETE requires `.all()`).
 - No silent lossy conversions (e.g. `u64` overflow is an error, unknown types are errors, not NULL).
+- Builders are the safe execution API: thin `&impl Executor` shortcuts (`Select`: fetch_all/fetch_one/fetch_one_optional, no `execute`; writes: `execute`, fetch only after `.returning(..)` via typestate; `RawQuery`: all). No streaming shortcut; `Executor` stays low-level and accepts any `Query`.
 - SQL generation lives only in `flux-db-sql-render`; drivers never `format!` SQL.
 - `chrono` is a default feature; no savepoints in v1.
 - Errors: minimal flux_db_core::Error (InvalidQuery, Conversion, Decode, NotFound, Driver; Conversion = value-level type mismatch from FromValue, Decode = column-scoped row failure; FromValue allows only lossless widening); never wrap or remap driver errors, pass them through in Driver.

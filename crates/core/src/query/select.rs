@@ -122,3 +122,9 @@ impl Select {
         self
     }
 }
+
+/// Fetch shortcuts. There is no `execute`, and no streaming `fetch`: build the
+/// query and call [`Executor::fetch`](crate::driver::executor::Executor::fetch).
+impl Select {
+    crate::query::run::fetch_shortcuts!();
+}

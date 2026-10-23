@@ -6,8 +6,8 @@ error[E0599]: the method `into_query` exists for struct `flux_db_core::query::up
   |
  ::: src/query/update.rs
   |
-  | pub struct Update<S = Unfiltered> {
-  | --------------------------------- doesn't satisfy `flux_db_core::query::update::Update: IntoQuery`
+  | pub struct Update<S = Unfiltered, R = NoReturning> {
+  | -------------------------------------------------- doesn't satisfy `flux_db_core::query::update::Update: IntoQuery`
   |
  ::: src/query/state.rs
   |

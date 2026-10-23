@@ -21,9 +21,11 @@
 //! ```
 
 use std::borrow::Cow;
+use std::marker::PhantomData;
 
 use crate::ast::expr::Expr;
 use crate::query::duplicate_column;
+use crate::query::state::{NoReturning, Returning};
 use crate::types::column::{Column, TypedColumn};
 use crate::types::error::{Error, Result};
 use crate::types::value::IntoValue;
@@ -67,14 +69,18 @@ impl InsertRow {
 }
 
 /// An `INSERT INTO table (...) VALUES (...), (...)` query.
+///
+/// `R` is [`Returning`] once `.returning(...)` was called, which unlocks the
+/// fetch shortcuts.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Insert {
+pub struct Insert<R = NoReturning> {
     /// Target table.
     pub table: Cow<'static, str>,
     /// Rows to insert, in order.
     pub rows: Vec<InsertRow>,
     /// `RETURNING` columns or expressions.
     pub returning: Vec<Expr>,
+    _state: PhantomData<R>,
 }
 
 impl Insert {
@@ -84,6 +90,19 @@ impl Insert {
             table: table.into(),
             rows: Vec::new(),
             returning: Vec::new(),
+            _state: PhantomData,
+        }
+    }
+}
+
+impl<R> Insert<R> {
+    /// Moves the builder to another state, keeping its data.
+    pub(crate) fn into_state<Q>(self) -> Insert<Q> {
+        Insert {
+            table: self.table,
+            rows: self.rows,
+            returning: self.returning,
+            _state: PhantomData,
         }
     }
 
@@ -100,9 +119,10 @@ impl Insert {
     }
 
     /// Adds a `RETURNING` column or expression.
-    pub fn returning(mut self, expr: impl Into<Expr>) -> Self {
-        self.returning.push(expr.into());
-        self
+    pub fn returning(self, expr: impl Into<Expr>) -> Insert<Returning> {
+        let mut next = self.into_state();
+        next.returning.push(expr.into());
+        next
     }
 
     /// Columns shared by every row (taken from the first one).
@@ -149,4 +169,12 @@ impl Insert {
         }
         Ok(())
     }
+}
+
+impl<R> Insert<R> {
+    crate::query::run::execute_shortcut!();
+}
+
+impl Insert<Returning> {
+    crate::query::run::fetch_shortcuts!();
 }

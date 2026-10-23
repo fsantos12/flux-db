@@ -1,0 +1,5 @@
+error[E0599]: no method named `execute` found for struct `flux_db_core::query::select::Select` in the current scope
+ --> tests/ui_shortcuts/select_execute.rs:9:31
+  |
+9 |     let _ = Select::from("t").execute(db);
+  |                               ^^^^^^^ method not found in `flux_db_core::query::select::Select`

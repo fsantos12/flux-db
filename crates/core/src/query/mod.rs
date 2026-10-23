@@ -8,6 +8,7 @@
 pub mod delete;
 pub mod insert;
 pub mod raw;
+mod run;
 pub mod select;
 pub mod state;
 pub mod update;
@@ -97,14 +98,15 @@ impl IntoQuery for RawQuery {
     }
 }
 
-impl IntoQuery for Insert {
+impl<R> IntoQuery for Insert<R> {
     fn into_query(self) -> Result<Query> {
         self.validate()?;
-        Ok(Query::Insert(self))
+        // `Query` keeps the plain `Insert`; `returning` carries the data.
+        Ok(Query::Insert(self.into_state()))
     }
 }
 
-impl<S: Executable> IntoQuery for Update<S> {
+impl<S: Executable, R> IntoQuery for Update<S, R> {
     fn into_query(self) -> Result<Query> {
         self.validate()?;
         Ok(Query::Update(UpdateQuery {
@@ -116,7 +118,7 @@ impl<S: Executable> IntoQuery for Update<S> {
     }
 }
 
-impl<S: Executable> IntoQuery for Delete<S> {
+impl<S: Executable, R> IntoQuery for Delete<S, R> {
     // No `validate()` here: a `DELETE` has nothing to check beyond its
     // typestate, and the `Executable` bound already rules out `Unfiltered`.
     fn into_query(self) -> Result<Query> {

@@ -51,3 +51,10 @@ impl RawQuery {
         self
     }
 }
+
+/// Shortcuts. For streaming, build the query and call
+/// [`Executor::fetch`](crate::driver::executor::Executor::fetch).
+impl RawQuery {
+    crate::query::run::execute_shortcut!();
+    crate::query::run::fetch_shortcuts!();
+}
