@@ -59,10 +59,7 @@ pub trait Entity: FromRow + Send + Sync {
     fn own_key_filter(&self) -> Result<Expr> {
         let keys = self.primary_key_values();
         if keys.is_empty() {
-            return Err(Error::invalid_query(format!(
-                "entity `{}` has no primary key",
-                Self::TABLE
-            )));
+            return Err(no_primary_key(Self::TABLE));
         }
         keys.into_iter()
             .map(|(column, value)| key_equals(column, value))
@@ -79,10 +76,7 @@ pub trait Entity: FromRow + Send + Sync {
         Self: Sized,
     {
         if Self::PRIMARY_KEY.is_empty() {
-            return Err(Error::invalid_query(format!(
-                "entity `{}` has no primary key",
-                Self::TABLE
-            )));
+            return Err(no_primary_key(Self::TABLE));
         }
         if values.len() != Self::PRIMARY_KEY.len() {
             return Err(Error::invalid_query(format!(
@@ -99,6 +93,11 @@ pub trait Entity: FromRow + Send + Sync {
             .collect::<Result<Vec<_>>>()
             .map(Expr::all)
     }
+}
+
+/// Error for a key-based operation on an entity without a primary key.
+fn no_primary_key(table: &str) -> Error {
+    Error::invalid_query(format!("entity `{table}` has no primary key"))
 }
 
 /// `column = value` for one key part; NULL is rejected because `= NULL` never matches.
