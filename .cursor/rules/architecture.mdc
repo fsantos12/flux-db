@@ -7,24 +7,23 @@ alwaysApply: true
 Source of truth: Stormie Flux's blueprints, kept outside the repo in `/workspace/flux-db/blueprints/` (see `01-foundation.md`). Changes to architecture go through Stormie Flux first.
 
 ## Workspace layout
-- `crates/core` (`flux-db-core`): safe `Value` enum, owned query AST (Select/Insert/Update/Delete, Expr, Column), builders, `Driver`/`Executor`/`Connection`/`Transaction`, `FromRow`/`Entity` traits, `Error`. No driver, no runtime, no tokio types.
+- `crates/core` (`flux-db-core`): safe `Value` enum, owned query AST (Select/Insert/Update/Delete, Expr, Column), builders, `Driver`/`Executor`/`Connection`/`Transaction`, `FromRow` trait, `Error`. No driver, no runtime, no tokio types.
 - `crates/sql-render` (`flux-db-sql-render`): one shared SQL renderer -> SQL string + bound params; `Dialect` trait for placeholders, identifier quoting, limit/offset, RETURNING. Depends only on `flux-db-core`.
 - `crates/postgres` (`flux-db-postgres`): native `tokio-postgres` + pool; Postgres dialect + connection. Optional rustls TLS.
-- `crates/entity` (`flux-db-entity`): `#[derive(Entity)]` proc-macro (typed columns, find/query/insert/update/delete).
-- `crates/flux-db` (`flux-db`): facade; re-exports behind features (`entity`, `postgres`; optional `uuid`, `json`, `decimal`).
+- `crates/flux-db` (`flux-db`): facade; re-exports behind features (`postgres`; optional `uuid`, `json`, `decimal`).
 - Packages keep the `flux-` prefix. Future: `crates/mysql`, `crates/sqlite`, `flux-orm`.
 
 ## Dependency direction
-`flux-db` -> drivers -> `flux-db-sql-render` -> `flux-db-core`. `flux-db-entity` generates code against `flux-db-core` only. Never depend upward or sideways between drivers.
+`flux-db` -> drivers -> `flux-db-sql-render` -> `flux-db-core`. Never depend upward or sideways between drivers.
 
 ## Rules
 - Drivers chosen at compile time via generics. No `AnyDriver`, no `dyn Driver`.
 - Native `async fn` in traits (edition 2024, rust-version 1.99). No `async-trait`.
-- Typed columns are the primary API; string `col("x")` is the escape hatch. Both build the same AST.
+- Columns are strings (`col("x")`), always quoted. Entities, the derive, typed columns and Active Record are parked until a new blueprint.
 - All values are bound parameters. Identifiers are always quoted by the dialect. LIKE patterns are a `LikePattern` enum; the dialect escapes Contains/StartsWith/EndsWith, only `Raw` passes through. Base types (Value, Row, Column, Error) live in `core/src/types/`; query AST data (Expr, OrderBy) lives in `core/src/ast/`, builders in `core/src/query/`, driver traits in `core/src/driver/` (traits only; impls live in driver crates). Raw SQL only via `query_raw` with bound params.
 - Errors, never panics, on bad input (`FromRow` returns `Result`, empty insert is an error, unfiltered UPDATE/DELETE requires `.all()`).
 - No silent lossy conversions (e.g. `u64` overflow is an error, unknown types are errors, not NULL).
 - SQL generation lives only in `flux-db-sql-render`; drivers never `format!` SQL.
-- Primary keys of any size as runtime `Vec<Value>` (`Entity::primary_key_values`, `column_values` for UPDATE SET so keys never enter SET, `own_key_filter` for update/delete, `primary_key_filter` for find; no key, wrong count or NULL is `InvalidQuery`), always set by the user; no generated columns and no `save()`; `chrono` is a default feature; no savepoints in v1.
+- `chrono` is a default feature; no savepoints in v1.
 - Errors: minimal flux_db_core::Error (InvalidQuery, Conversion, Decode, NotFound, Driver; Conversion = value-level type mismatch from FromValue, Decode = column-scoped row failure; FromValue allows only lossless widening); never wrap or remap driver errors, pass them through in Driver.
 - Prefer the minimal design; new crates or traits need a blueprint.
