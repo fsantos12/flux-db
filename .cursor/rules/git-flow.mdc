@@ -27,7 +27,7 @@ Repository: https://github.com/fsantos12/flux-db
 - Gittie Flux creates branches and opens every PR with a descriptive summary,
   flagging breaking changes and security notes. Filipe approves and merges or rejects.
 - Dever Flux shares snippets in chat, or pushes them to the feature branch when Filipe is away.
-- Rule files and blueprints prepared by bots in /workspace/flux-db are pushed by Filipe.
+- Rule files prepared by bots in /workspace/flux-db are pushed by Filipe.
 
 ## Per-feature order
 1. Stormie Flux: blueprint approved, names the `feature/<name>` branch.
