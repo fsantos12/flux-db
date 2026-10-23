@@ -4,7 +4,7 @@ alwaysApply: true
 ---
 # flux-db architecture
 
-Source of truth: `docs/blueprints/` (see `01-foundation.md`). Changes to architecture go through Stormie Flux first.
+Source of truth: Stormie Flux's blueprints, kept outside the repo in `/workspace/flux-db/blueprints/` (see `01-foundation.md`). Changes to architecture go through Stormie Flux first.
 
 ## Workspace layout
 - `crates/core` (`flux-db-core`): safe `Value` enum, owned query AST (Select/Insert/Update/Delete, Expr, Column), builders, `Driver`/`Executor`/`Connection`/`Transaction`, `FromRow`/`Entity` traits, `Error`. No driver, no runtime, no tokio types.
