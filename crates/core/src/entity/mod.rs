@@ -1,6 +1,6 @@
 use crate::types::{column::Column, row::FromRow, value::Value};
 
-pub struct EntityColumn {
+pub struct EntityColumnDef {
     pub name: &'static str,
     pub primary_key: bool,
 }
@@ -11,8 +11,8 @@ pub trait PrimaryKey {
 
 pub trait Entity: FromRow + Send + Sync {
     const TABLE: &'static str;
-    const PRIMARY_KEY: &'static [EntityColumn];
-    const COLUMNS: &'static [EntityColumn];
+    const PRIMARY_KEY: &'static [EntityColumnDef];
+    const COLUMNS: &'static [EntityColumnDef];
 
     fn values(&self) -> Vec<(Column, Value)>;
 }
