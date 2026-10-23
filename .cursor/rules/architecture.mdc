@@ -25,6 +25,6 @@ Source of truth: Stormie Flux's blueprints, kept outside the repo in `/workspace
 - Errors, never panics, on bad input (`FromRow` returns `Result`, empty insert is an error, unfiltered UPDATE/DELETE requires `.all()`).
 - No silent lossy conversions (e.g. `u64` overflow is an error, unknown types are errors, not NULL).
 - SQL generation lives only in `flux-db-sql-render`; drivers never `format!` SQL.
-- Primary keys of any size as runtime `Vec<Value>` (`Entity::primary_key_values` and `primary_key_filter`; no key, wrong count or NULL is `InvalidQuery`), always set by the user; no generated columns and no `save()`; `chrono` is a default feature; no savepoints in v1.
+- Primary keys of any size as runtime `Vec<Value>` (`Entity::primary_key_values`, `column_values` for UPDATE SET so keys never enter SET, `own_key_filter` for update/delete, `primary_key_filter` for find; no key, wrong count or NULL is `InvalidQuery`), always set by the user; no generated columns and no `save()`; `chrono` is a default feature; no savepoints in v1.
 - Errors: minimal flux_db_core::Error (InvalidQuery, Conversion, Decode, NotFound, Driver; Conversion = value-level type mismatch from FromValue, Decode = column-scoped row failure; FromValue allows only lossless widening); never wrap or remap driver errors, pass them through in Driver.
 - Prefer the minimal design; new crates or traits need a blueprint.
