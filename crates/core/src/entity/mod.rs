@@ -2,10 +2,12 @@
 //!
 //! These traits are implemented by `#[derive(Entity)]`; core only defines them.
 
+use crate::ast::expr::Expr;
 use crate::types::{
     column::Column,
+    error::{Error, Result},
     row::FromRow,
-    value::{IntoValue, Value},
+    value::Value,
 };
 
 /// Static metadata for one entity column.
@@ -24,18 +26,10 @@ impl EntityColumnDef {
     }
 }
 
-/// A primary key value: one value per primary key column.
-///
-/// Implemented for single key types and for tuples of 2 to 4 elements.
-pub trait PrimaryKey {
-    /// The key values, in the order of [`Entity::PRIMARY_KEY`].
-    fn into_values(self) -> Vec<Value>;
-}
-
 /// A database table mapped to a Rust type.
 ///
-/// Every entity can be queried and inserted; entities with a primary key also
-/// implement [`PrimaryKeyed`].
+/// Entities with a non-empty [`Entity::PRIMARY_KEY`] can also be found, updated
+/// and deleted through [`Entity::primary_key_filter`].
 pub trait Entity: FromRow + Send + Sync {
     /// Table name.
     const TABLE: &'static str;
@@ -46,53 +40,46 @@ pub trait Entity: FromRow + Send + Sync {
 
     /// Column/value pairs for INSERT and UPDATE.
     fn values(&self) -> Vec<(Column, Value)>;
-}
 
-/// An entity with a primary key, enabling `find`, `update` and `delete`.
-pub trait PrimaryKeyed: Entity {
-    /// The key type: a single value, or a tuple for composite keys.
-    type Id: PrimaryKey;
+    /// Current primary key values, in [`Entity::PRIMARY_KEY`] order.
+    /// Empty when the entity has no key.
+    fn primary_key_values(&self) -> Vec<Value>;
 
-    /// The current primary key value.
-    fn id(&self) -> Self::Id;
-}
-
-macro_rules! single_key {
-    ($($(#[$attr:meta])* $ty:ty),* $(,)?) => {
-        $(
-            $(#[$attr])*
-            impl PrimaryKey for $ty {
-                fn into_values(self) -> Vec<Value> {
-                    vec![self.into_value()]
-                }
-            }
-        )*
-    };
-}
-
-single_key! {
-    i8, i16, i32, i64, i128,
-    u8, u16, u32, u64, u128,
-    char, String, &str, Vec<u8>,
-    #[cfg(feature = "decimal")] rust_decimal::Decimal,
-    #[cfg(feature = "chrono")] chrono::NaiveDate,
-    #[cfg(feature = "chrono")] chrono::NaiveDateTime,
-    #[cfg(feature = "chrono")] chrono::DateTime<chrono::Utc>,
-    #[cfg(feature = "uuid")] uuid::Uuid,
-}
-
-macro_rules! tuple_key {
-    ($($name:ident),+) => {
-        impl<$($name: IntoValue),+> PrimaryKey for ($($name,)+) {
-            #[allow(non_snake_case)]
-            fn into_values(self) -> Vec<Value> {
-                let ($($name,)+) = self;
-                vec![$($name.into_value()),+]
-            }
+    /// `pk1 = $1 AND pk2 = $2 ...` for the given key values.
+    ///
+    /// Errors with [`Error::InvalidQuery`] when the entity has no key, the
+    /// number of values differs from [`Entity::PRIMARY_KEY`], or a value is NULL.
+    fn primary_key_filter(values: Vec<Value>) -> Result<Expr>
+    where
+        Self: Sized,
+    {
+        if Self::PRIMARY_KEY.is_empty() {
+            return Err(Error::invalid_query(format!(
+                "entity `{}` has no primary key",
+                Self::TABLE
+            )));
         }
-    };
+        if values.len() != Self::PRIMARY_KEY.len() {
+            return Err(Error::invalid_query(format!(
+                "entity `{}` expects {} primary key values, got {}",
+                Self::TABLE,
+                Self::PRIMARY_KEY.len(),
+                values.len()
+            )));
+        }
+        Self::PRIMARY_KEY
+            .iter()
+            .zip(values)
+            .map(|(def, value)| {
+                if matches!(value, Value::Null) {
+                    return Err(Error::invalid_query(format!(
+                        "primary key column `{}` cannot be NULL",
+                        def.name
+                    )));
+                }
+                Ok(Expr::from(def.column::<Self>()).equals(value))
+            })
+            .collect::<Result<Vec<_>>>()
+            .map(Expr::all)
+    }
 }
-
-tuple_key!(A, B);
-tuple_key!(A, B, C);
-tuple_key!(A, B, C, D);
