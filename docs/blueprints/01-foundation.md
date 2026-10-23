@@ -21,7 +21,7 @@ Lay the base of flux-db: a Cargo workspace with a runtime-agnostic core (values,
 **Non-goals (v1)**
 - MySQL, SQLite (later blueprints). NoSQL backends.
 - `AnyDriver` / runtime driver choice (compile-time generics only).
-- JOINs, GROUP BY/HAVING, subqueries, aggregates beyond `count()` (follow-up blueprint).
+- JOINs, DISTINCT and subqueries (follow-up blueprint). GROUP BY/HAVING and the aggregate functions (`Count`, `Sum`, `Avg`, `Min`, `Max`) are in v1.
 - Composite primary keys, savepoints / nested transactions.
 - Change tracking, relations, migrations, ORM (`flux-orm` later).
 
@@ -279,6 +279,7 @@ Split into sub-branches, each merged straight into `dev` one at a time, in this 
 **NULL semantics**
 - sql-render (from Hunter, a4f0c03): `NOT IN` list containing NULL matches nothing; render error or document. Max expression depth (e.g. 512) → `InvalidQuery` instead of stack overflow. `IN` list > 65,535 params → `InvalidQuery`.
 - Aggregates (Count/Sum/Avg/Min/Max/CountAll) inside WHERE → `InvalidQuery` at render (belongs in HAVING). Result types differ from input: Postgres SUM(int4)=int8, SUM(int8)=numeric, AVG=numeric, COUNT=int8; decode tests must cover these.
+- **GROUP BY / HAVING**: `having` without `group_by` is valid SQL (the whole table is one group) and stays allowed; an empty `group_by` list renders nothing; GROUP BY and HAVING render after WHERE and before ORDER BY/LIMIT; HAVING params are numbered after WHERE params.
 - Func arity at render → `InvalidQuery`: Coalesce needs ≥1 arg (single-arg is valid SQL), Count exactly 1, Lower/Upper/Length/Trim/Sum/Avg/Min/Max exactly 1.
 - LIKE helpers should also exist on `Option<String>` columns.
 - `eq(None)` must render `IS NULL` (or be a compile error on non-Option columns); `ne(None)` → `IS NOT NULL`.
