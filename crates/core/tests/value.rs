@@ -44,20 +44,30 @@ fn every_type_round_trips_including_extremes() {
     roundtrip(f64::MIN_POSITIVE);
     roundtrip(f64::INFINITY);
     roundtrip(f64::NEG_INFINITY);
+    #[cfg(feature = "decimal")]
     roundtrip(rust_decimal::Decimal::MAX);
     roundtrip('\u{1F980}');
     roundtrip(String::new());
     roundtrip("emoji 🦀, combining e\u{301}, RTL עברית".to_owned());
+    #[cfg(feature = "chrono")]
     roundtrip(chrono::NaiveDate::MIN);
+    #[cfg(feature = "chrono")]
     roundtrip(chrono::NaiveDate::MAX);
+    #[cfg(feature = "chrono")]
     roundtrip(chrono::NaiveTime::from_hms_micro_opt(23, 59, 59, 999_999).unwrap());
+    #[cfg(feature = "chrono")]
     roundtrip(chrono::NaiveDateTime::MAX);
+    #[cfg(feature = "chrono")]
     roundtrip(chrono::DateTime::<chrono::Utc>::MIN_UTC);
     roundtrip(Vec::<u8>::new());
     roundtrip(vec![0u8, 255, 0]);
+    #[cfg(feature = "uuid")]
     roundtrip(uuid::Uuid::nil());
+    #[cfg(feature = "uuid")]
     roundtrip(uuid::Uuid::max());
+    #[cfg(feature = "json")]
     roundtrip(serde_json::json!({"a": [1, null, "x"]}));
+    #[cfg(feature = "json")]
     roundtrip(serde_json::Value::Null);
 }
 
@@ -177,7 +187,9 @@ fn signedness_changes_are_conversion_errors() {
 fn int_float_and_decimal_crossings_are_conversion_errors() {
     assert_conversion::<f64>(Value::I32(1), "f64", "i32");
     assert_conversion::<i64>(Value::F64(1.0), "i64", "f64");
+    #[cfg(feature = "decimal")]
     assert_conversion::<rust_decimal::Decimal>(Value::I64(1), "Decimal", "i64");
+    #[cfg(feature = "decimal")]
     assert_conversion::<f64>(Value::Decimal(rust_decimal::Decimal::ONE), "f64", "Decimal");
 }
 
@@ -186,16 +198,19 @@ fn non_numeric_mismatches_are_conversion_errors() {
     assert_conversion::<bool>(Value::I8(1), "bool", "i8");
     assert_conversion::<String>(Value::Char('a'), "String", "char");
     assert_conversion::<char>(Value::String("a".into()), "char", "String");
+    #[cfg(feature = "chrono")]
     assert_conversion::<chrono::NaiveDateTime>(
         Value::TimestampTz(chrono::DateTime::<chrono::Utc>::MIN_UTC),
         "Timestamp",
         "DateTime<Utc>",
     );
+    #[cfg(feature = "uuid")]
     assert_conversion::<uuid::Uuid>(
         Value::String(uuid::Uuid::nil().to_string()),
         "Uuid",
         "String",
     );
+    #[cfg(feature = "json")]
     assert_conversion::<serde_json::Value>(Value::String("{}".into()), "Json", "String");
     assert_conversion::<Vec<u8>>(Value::String("x".into()), "Vec<u8>", "String");
 }
@@ -205,6 +220,7 @@ fn type_name_matches_conversion_names() {
     assert_eq!(Value::Null.type_name(), "null");
     assert_eq!(Value::Bool(true).type_name(), "bool");
     assert_eq!(Value::U128(0).type_name(), "u128");
+    #[cfg(feature = "chrono")]
     assert_eq!(
         Value::TimestampTz(chrono::DateTime::<chrono::Utc>::MIN_UTC).type_name(),
         "DateTime<Utc>"

@@ -42,10 +42,14 @@ pub trait FromValue: Sized {
 /// impls. Each entry is `Variant(Type) = "name"`, optionally followed by
 /// `widen [Variants...]`: smaller variants accepted losslessly via `From`.
 ///
+/// An entry may start with `#[cfg(...)]` attributes; they are applied to the
+/// variant, its `type_name()` arm and both impls, so optional types live
+/// behind Cargo features.
+///
 /// Keeping every type in one table guarantees the enum, its names and both
 /// conversions never drift apart; add new types here, not by hand.
 macro_rules! define_value {
-    ($( $variant:ident($ty:ty) = $name:literal $(widen [$($wide:ident),*])? ; )*) => {
+    ($( $(#[$attr:meta])* $variant:ident($ty:ty) = $name:literal $(widen [$($wide:ident),*])? ; )*) => {
         /// A database value.
         #[derive(Debug, Clone, PartialEq)]
         #[non_exhaustive]
@@ -54,6 +58,7 @@ macro_rules! define_value {
             Null,
             $(
                 #[doc = concat!("A `", $name, "` value.")]
+                $(#[$attr])*
                 $variant($ty),
             )*
         }
@@ -72,18 +77,20 @@ macro_rules! define_value {
             pub fn type_name(&self) -> &'static str {
                 match self {
                     Self::Null => "null",
-                    $( Self::$variant(_) => $name, )*
+                    $( $(#[$attr])* Self::$variant(_) => $name, )*
                 }
             }
         }
 
         $(
+            $(#[$attr])*
             impl IntoValue for $ty {
                 fn into_value(self) -> Value {
                     Value::$variant(self)
                 }
             }
 
+            $(#[$attr])*
             impl FromValue for $ty {
                 fn from_value(value: Value) -> Result<Self> {
                     match value {
@@ -111,15 +118,22 @@ define_value! {
     U128(u128) = "u128" widen [U8, U16, U32, U64];
     F32(f32) = "f32";
     F64(f64) = "f64" widen [F32];
+    #[cfg(feature = "decimal")]
     Decimal(rust_decimal::Decimal) = "Decimal";
     Char(char) = "char";
     String(String) = "String";
+    #[cfg(feature = "chrono")]
     Date(chrono::NaiveDate) = "Date";
+    #[cfg(feature = "chrono")]
     Time(chrono::NaiveTime) = "Time";
+    #[cfg(feature = "chrono")]
     Timestamp(chrono::NaiveDateTime) = "Timestamp";
+    #[cfg(feature = "chrono")]
     TimestampTz(chrono::DateTime<chrono::Utc>) = "DateTime<Utc>";
     Bytes(Vec<u8>) = "Vec<u8>";
+    #[cfg(feature = "uuid")]
     Uuid(uuid::Uuid) = "Uuid";
+    #[cfg(feature = "json")]
     Json(serde_json::Value) = "Json";
 }
 
