@@ -5,6 +5,10 @@ use std::sync::Arc;
 use crate::types::error::{Error, Result};
 use crate::types::value::{FromValue, Value};
 
+pub trait FromRow: Sized {
+    fn from_row(row: &Row) -> Result<Self>;
+}
+
 /// An ordered set of column names and their values.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Row {
