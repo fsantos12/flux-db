@@ -10,7 +10,7 @@ Source of truth: Stormie Flux's blueprints, kept outside the repo in `/workspace
 - `crates/core` (`flux-db-core`): safe `Value` enum, owned query AST (Select/Insert/Update/Delete, Expr, Column), builders, `Driver`/`Executor`/`Connection`/`Transaction`, `FromRow`/`Entity` traits, `Error`. No driver, no runtime, no tokio types.
 - `crates/sql-render` (`flux-db-sql-render`): one shared SQL renderer -> SQL string + bound params; `Dialect` trait for placeholders, identifier quoting, limit/offset, RETURNING. Depends only on `flux-db-core`.
 - `crates/postgres` (`flux-db-postgres`): native `tokio-postgres` + pool; Postgres dialect + connection. Optional rustls TLS.
-- `crates/entity` (`flux-db-entity`): `#[derive(Entity)]` proc-macro (typed columns, find/query/save/insert/update/delete).
+- `crates/entity` (`flux-db-entity`): `#[derive(Entity)]` proc-macro (typed columns, query/insert for every entity, find/update/delete for `PrimaryKeyed` entities).
 - `crates/flux-db` (`flux-db`): facade; re-exports behind features (`entity`, `postgres`; optional `uuid`, `json`, `decimal`).
 - Packages keep the `flux-` prefix. Future: `crates/mysql`, `crates/sqlite`, `flux-orm`.
 
@@ -25,6 +25,6 @@ Source of truth: Stormie Flux's blueprints, kept outside the repo in `/workspace
 - Errors, never panics, on bad input (`FromRow` returns `Result`, empty insert is an error, unfiltered UPDATE/DELETE requires `.all()`).
 - No silent lossy conversions (e.g. `u64` overflow is an error, unknown types are errors, not NULL).
 - SQL generation lives only in `flux-db-sql-render`; drivers never `format!` SQL.
-- Single-column primary keys; `chrono` for time; no savepoints in v1.
+- Single or composite primary keys (up to 4 columns, `PrimaryKey` trait), always set by the user; no generated columns and no `save()`; `chrono` is a default feature; no savepoints in v1.
 - Errors: minimal flux_db_core::Error (InvalidQuery, Conversion, Decode, NotFound, Driver; Conversion = value-level type mismatch from FromValue, Decode = column-scoped row failure; FromValue allows only lossless widening); never wrap or remap driver errors, pass them through in Driver.
 - Prefer the minimal design; new crates or traits need a blueprint.
