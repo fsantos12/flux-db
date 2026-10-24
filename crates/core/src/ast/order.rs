@@ -1,4 +1,4 @@
-//! ORDER BY nodes.
+//! `ORDER BY` nodes.
 //!
 //! # Examples
 //!

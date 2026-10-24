@@ -1,13 +1,13 @@
-error[E0599]: the method `into_query` exists for struct `flux_db_core::query::update::Update`, but its trait bounds were not satisfied
+error[E0599]: the method `into_query` exists for struct `flux_db_core::Update`, but its trait bounds were not satisfied
  --> tests/ui/unfiltered_update.rs:7:74
   |
 7 |     let _ = Update::table("users").set(Column::new("name"), Expr::now()).into_query();
-  |                                                                          ^^^^^^^^^^ method cannot be called on `flux_db_core::query::update::Update` due to unsatisfied trait bounds
+  |                                                                          ^^^^^^^^^^ method cannot be called on `flux_db_core::Update` due to unsatisfied trait bounds
   |
  ::: src/query/update.rs
   |
   | pub struct Update<S = Unfiltered, R = NoReturning> {
-  | -------------------------------------------------- doesn't satisfy `flux_db_core::query::update::Update: IntoQuery`
+  | -------------------------------------------------- doesn't satisfy `flux_db_core::Update: IntoQuery`
   |
  ::: src/query/state.rs
   |
@@ -16,4 +16,4 @@ error[E0599]: the method `into_query` exists for struct `flux_db_core::query::up
   |
   = note: the following trait bounds were not satisfied:
           `Unfiltered: Executable`
-          which is required by `flux_db_core::query::update::Update: IntoQuery`
+          which is required by `flux_db_core::Update: IntoQuery`

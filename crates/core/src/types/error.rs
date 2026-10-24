@@ -29,7 +29,7 @@ pub enum Error {
         /// What went wrong.
         message: String,
     },
-    /// `fetch_one` / `find` returned no rows.
+    /// `fetch_one` returned no rows.
     NotFound,
     /// Anything from the driver, passed through untouched.
     Driver(Box<dyn StdError + Send + Sync>),

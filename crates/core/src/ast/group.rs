@@ -1,4 +1,4 @@
-//! GROUP BY / HAVING nodes.
+//! `GROUP BY` / `HAVING` nodes.
 
 use crate::ast::expr::Expr;
 

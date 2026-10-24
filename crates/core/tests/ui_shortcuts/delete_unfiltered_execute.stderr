@@ -1,8 +1,8 @@
-error[E0599]: the method `execute` exists for struct `flux_db_core::query::delete::Delete`, but its trait bounds were not satisfied
+error[E0599]: the method `execute` exists for struct `flux_db_core::Delete`, but its trait bounds were not satisfied
  --> tests/ui_shortcuts/delete_unfiltered_execute.rs:9:31
   |
 9 |     let _ = Delete::from("t").execute(db);
-  |                               ^^^^^^^ method cannot be called on `flux_db_core::query::delete::Delete` due to unsatisfied trait bounds
+  |                               ^^^^^^^ method cannot be called on `flux_db_core::Delete` due to unsatisfied trait bounds
   |
  ::: src/query/state.rs
   |

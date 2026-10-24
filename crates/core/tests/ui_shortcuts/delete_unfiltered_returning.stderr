@@ -1,4 +1,4 @@
-error[E0599]: the method `returning` exists for struct `flux_db_core::query::delete::Delete`, but its trait bounds were not satisfied
+error[E0599]: the method `returning` exists for struct `flux_db_core::Delete`, but its trait bounds were not satisfied
  --> tests/ui_shortcuts/delete_unfiltered_returning.rs:9:31
   |
 9 |     let _ = Delete::from("t").returning(Column::new("id")).fetch_all::<Row>(db);

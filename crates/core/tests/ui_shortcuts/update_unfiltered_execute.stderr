@@ -1,8 +1,8 @@
-error[E0599]: the method `execute` exists for struct `flux_db_core::query::update::Update`, but its trait bounds were not satisfied
+error[E0599]: the method `execute` exists for struct `flux_db_core::Update`, but its trait bounds were not satisfied
  --> tests/ui_shortcuts/update_unfiltered_execute.rs:9:70
   |
 9 |     let _ = Update::table("t").set(Column::new("a"), Expr::value(1)).execute(db);
-  |                                                                      ^^^^^^^ method cannot be called on `flux_db_core::query::update::Update` due to unsatisfied trait bounds
+  |                                                                      ^^^^^^^ method cannot be called on `flux_db_core::Update` due to unsatisfied trait bounds
   |
  ::: src/query/state.rs
   |

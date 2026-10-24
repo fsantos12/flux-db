@@ -1,13 +1,13 @@
-error[E0599]: the method `into_query` exists for struct `flux_db_core::query::delete::Delete`, but its trait bounds were not satisfied
+error[E0599]: the method `into_query` exists for struct `flux_db_core::Delete`, but its trait bounds were not satisfied
  --> tests/ui/unfiltered_delete.rs:5:35
   |
 5 |     let _ = Delete::from("users").into_query();
-  |                                   ^^^^^^^^^^ method cannot be called on `flux_db_core::query::delete::Delete` due to unsatisfied trait bounds
+  |                                   ^^^^^^^^^^ method cannot be called on `flux_db_core::Delete` due to unsatisfied trait bounds
   |
  ::: src/query/delete.rs
   |
   | pub struct Delete<S = Unfiltered, R = NoReturning> {
-  | -------------------------------------------------- doesn't satisfy `flux_db_core::query::delete::Delete: IntoQuery`
+  | -------------------------------------------------- doesn't satisfy `flux_db_core::Delete: IntoQuery`
   |
  ::: src/query/state.rs
   |
@@ -16,4 +16,4 @@ error[E0599]: the method `into_query` exists for struct `flux_db_core::query::de
   |
   = note: the following trait bounds were not satisfied:
           `Unfiltered: Executable`
-          which is required by `flux_db_core::query::delete::Delete: IntoQuery`
+          which is required by `flux_db_core::Delete: IntoQuery`

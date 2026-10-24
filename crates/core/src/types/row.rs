@@ -5,7 +5,14 @@ use std::sync::Arc;
 use crate::types::error::{Error, Result};
 use crate::types::value::{FromValue, Value};
 
+/// Decodes a [`Row`] into a Rust type; used by the typed fetch shortcuts.
 pub trait FromRow: Sized {
+    /// Builds `Self` from one row.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Decode`] when a column is missing or its value cannot
+    /// be converted into the target type.
     fn from_row(row: &Row) -> Result<Self>;
 }
 
@@ -55,7 +62,12 @@ impl Row {
         self.values.get(index)
     }
 
-    /// Typed value by column name. Failures become a column-scoped [`Error::Decode`].
+    /// Typed value by column name.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Decode`], scoped to `column`, when the column does not
+    /// exist or its value cannot be converted into `T`.
     pub fn get<T: FromValue>(&self, column: &str) -> Result<T> {
         let index = self
             .index_of(column)
@@ -63,7 +75,12 @@ impl Row {
         self.decode_at(index)
     }
 
-    /// Typed value by position (fastest path, used by the entity derive).
+    /// Typed value by position (fastest path).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Decode`] when `index` is out of bounds or the value
+    /// cannot be converted into `T`.
     pub fn get_at<T: FromValue>(&self, index: usize) -> Result<T> {
         if index >= self.values.len() {
             return Err(Error::decode(
