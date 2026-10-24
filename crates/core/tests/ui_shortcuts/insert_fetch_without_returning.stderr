@@ -1,0 +1,7 @@
+error[E0599]: no method named `fetch_all` found for struct `flux_db_core::Insert` in the current scope
+ --> tests/ui_shortcuts/insert_fetch_without_returning.rs:9:91
+  |
+9 |     let _ = Insert::into("t").row(InsertRow::new().set(Column::new("a"), Expr::value(1))).fetch_all::<Row>(db);
+  |                                                                                           ^^^^^^^^^ method not found in `flux_db_core::Insert`
+  |
+  = note: the method was found for `flux_db_core::Insert<Returning>`

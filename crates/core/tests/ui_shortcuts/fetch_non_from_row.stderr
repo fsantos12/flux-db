@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `std::string::String: FromRow` is not satisfied
+ --> tests/ui_shortcuts/fetch_non_from_row.rs:9:43
+  |
+9 |     let _ = Select::from("t").fetch_all::<String>(db);
+  |                               ---------   ^^^^^^ the trait `FromRow` is not implemented for `std::string::String`
+  |                               |
+  |                               required by a bound introduced by this call
+  |
+help: the trait `FromRow` is implemented for `Row`
+ --> src/types/row.rs
+  |
+  | impl FromRow for Row {
+  | ^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `flux_db_core::Select::fetch_all`
+ --> src/query/run.rs
+  |
+  |         pub fn fetch_all<T: crate::types::row::FromRow>(
+  |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Select::fetch_all`
+  |
+ ::: src/query/select.rs
+  |
+  |     crate::query::run::fetch_shortcuts!();
+  |     ------------------------------------- in this macro invocation
+  = note: this error originates in the macro `crate::query::run::fetch_shortcuts` (in Nightly builds, run with -Z macro-backtrace for more info)
