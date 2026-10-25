@@ -1,0 +1,11 @@
+error[E0599]: no method named `fetch_one` found for struct `flux_db_core::Update<All>` in the current scope
+ --> tests/ui_shortcuts/update_fetch_without_returning.rs:9:76
+  |
+9 |     let _ = Update::table("t").set(Column::new("a"), Expr::value(1)).all().fetch_one::<Row>(db);
+  |             ------------------ -------------------------------------       ^^^^^^^^^
+  |             |                  |
+  |             |                  method `fetch_one` is available on `flux_db_core::Update`
+  |             method `fetch_one` is available on `flux_db_core::Update`
+  |
+help: there is a method `clone` with a similar name, but with different arguments
+ --> $RUST/core/src/clone.rs

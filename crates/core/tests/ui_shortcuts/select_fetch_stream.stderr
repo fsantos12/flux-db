@@ -1,0 +1,10 @@
+error[E0599]: no method named `fetch` found for struct `flux_db_core::Select` in the current scope
+ --> tests/ui_shortcuts/select_fetch_stream.rs:9:31
+  |
+9 |     let _ = Select::from("t").fetch(db);
+  |                               ^^^^^
+  |
+help: there is a method `fetch_all` with a similar name
+  |
+9 |     let _ = Select::from("t").fetch_all(db);
+  |                                    ++++
